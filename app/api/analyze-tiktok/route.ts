@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
+import { transcribeVideoDirectly } from "../../../tools/tools";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,25 +40,12 @@ export async function POST(request: NextRequest) {
       result.result.videoHD || result.result.videoWatermark || "";
     let transcription = null;
 
-    // If it's a video, try to transcribe it
+    // If it's a video, try to transcribe it using the tool function
     if (result.result.type === "video" && videoUrl) {
       try {
-        // For local development, use localhost directly
-        const baseUrl = "http://localhost:3000";
-
-        const transcriptionResponse = await fetch(`${baseUrl}/api/transcribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ videoUrl }),
-        });
-
-        if (transcriptionResponse.ok) {
-          const transcriptionResult = await transcriptionResponse.json();
-          if (transcriptionResult.success) {
-            transcription = transcriptionResult.data;
-          }
+        const transcriptionResult = await transcribeVideoDirectly(videoUrl);
+        if (transcriptionResult.success) {
+          transcription = transcriptionResult.data;
         }
       } catch {
         // Continue without transcription if it fails

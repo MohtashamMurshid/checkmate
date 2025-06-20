@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { experimental_transcribe } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { transcribeVideoDirectly } from "../../../tools/tools";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,42 +12,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if OpenAI API key is available
-    if (!process.env.OPENAI_API_KEY) {
+    // Use the transcribeVideoDirectly helper function
+    const result = await transcribeVideoDirectly(videoUrl);
+
+    if (!result.success) {
       return NextResponse.json(
-        { success: false, error: "OpenAI API key not configured" },
-        { status: 500 }
+        { success: false, error: result.error },
+        { status: result.error === "OpenAI API key not configured" ? 500 : 400 }
       );
     }
 
-    // Download the video content
-    const videoResponse = await fetch(videoUrl);
-    if (!videoResponse.ok) {
-      return NextResponse.json(
-        { success: false, error: "Failed to fetch video" },
-        { status: 400 }
-      );
-    }
-
-    // Get the video as an array buffer
-    const videoArrayBuffer = await videoResponse.arrayBuffer();
-    const videoBuffer = Buffer.from(videoArrayBuffer);
-
-    // Use AI SDK's experimental transcribe function
-    const transcription = await experimental_transcribe({
-      model: openai.transcription("whisper-1"),
-      audio: videoBuffer,
-    });
-
-    // Return the transcription results
-    return NextResponse.json({
-      success: true,
-      data: {
-        text: transcription.text,
-        segments: transcription.segments || [],
-        language: transcription.language,
-      },
-    });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Transcription error:", error);
     return NextResponse.json(

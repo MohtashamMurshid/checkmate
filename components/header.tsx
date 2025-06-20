@@ -1,4 +1,4 @@
-import { CheckCircleIcon } from "lucide-react";
+import { SearchCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
@@ -8,7 +8,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <CheckCircleIcon className="h-5 w-5" />
+              <SearchCheck className="h-5 w-5" />
             </div>
             <span className="text-xl font-bold">Checkmate</span>
           </div>

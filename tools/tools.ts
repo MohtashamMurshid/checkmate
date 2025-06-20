@@ -1,5 +1,62 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { Downloader } from "@tobyg74/tiktok-api-dl";
+import { experimental_transcribe } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+// Helper function for transcribing video
+export async function transcribeVideoDirectly(videoUrl: string) {
+  try {
+    if (!videoUrl) {
+      return {
+        success: false,
+        error: "Video URL is required",
+      };
+    }
+
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      return {
+        success: false,
+        error: "OpenAI API key not configured",
+      };
+    }
+
+    // Download the video content
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+      return {
+        success: false,
+        error: "Failed to fetch video",
+      };
+    }
+
+    // Get the video as an array buffer
+    const videoArrayBuffer = await videoResponse.arrayBuffer();
+    const videoBuffer = Buffer.from(videoArrayBuffer);
+
+    // Use AI SDK's experimental transcribe function
+    const transcription = await experimental_transcribe({
+      model: openai.transcription("whisper-1"),
+      audio: videoBuffer,
+    });
+
+    // Return the transcription results
+    return {
+      success: true,
+      data: {
+        text: transcription.text,
+        segments: transcription.segments || [],
+        language: transcription.language,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Transcription failed",
+    };
+  }
+}
 
 // Tool for analyzing TikTok videos and extracting metadata
 export const analyzeTikTokVideo = tool({
@@ -10,20 +67,83 @@ export const analyzeTikTokVideo = tool({
   }),
   execute: async ({ url }) => {
     try {
-      const response = await fetch("/api/analyze-tiktok", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze TikTok video");
+      if (!url) {
+        return {
+          success: false,
+          error: "URL is required",
+        };
       }
 
-      const result = await response.json();
-      return result;
+      // Validate TikTok URL format
+      const tiktokUrlPattern =
+        /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
+      if (!tiktokUrlPattern.test(url)) {
+        return {
+          success: false,
+          error: "Invalid TikTok URL format",
+        };
+      }
+
+      // Download TikTok content using the API
+      const result = await Downloader(url, {
+        version: "v3", // Use the latest version
+      });
+
+      if (result.status !== "success" || !result.result) {
+        return {
+          success: false,
+          error: "Failed to analyze TikTok video",
+        };
+      }
+
+      // Get the best quality MP4 video URL for transcription
+      const videoUrl =
+        result.result.videoHD || result.result.videoWatermark || "";
+      let transcription = null;
+
+      // If it's a video, try to transcribe it
+      if (result.result.type === "video" && videoUrl) {
+        try {
+          // Transcribe the video directly using the same logic
+          const transcriptionResult = await transcribeVideoDirectly(videoUrl);
+          if (transcriptionResult.success) {
+            transcription = transcriptionResult.data;
+          }
+        } catch {
+          // Continue without transcription if it fails
+        }
+      }
+
+      // Format the response to match our expected interface
+      const analysis = {
+        success: true,
+        data: {
+          title: result.result.desc || "TikTok Video",
+          thumbnail: result.result.author?.avatar || "",
+          hasVideo: result.result.type === "video" && !!result.result.videoHD,
+          hasImages: result.result.type === "image" && !!result.result.images,
+          hasAudio: !!result.result.music,
+          downloadLinks: {
+            video: {
+              standard: result.result.videoWatermark || "",
+              alternative: result.result.videoHD || "",
+              hd: result.result.videoHD || "",
+            },
+            audio: result.result.music || "",
+            images: result.result.images || [],
+          },
+          metadata: {
+            creator: result.result.author?.nickname || "Unknown",
+            contentType:
+              result.result.type === "image"
+                ? ("image_collection" as const)
+                : ("video" as const),
+          },
+          transcription,
+        },
+      };
+
+      return analysis;
     } catch (error) {
       return {
         success: false,
@@ -42,20 +162,49 @@ export const transcribeTikTokVideo = tool({
   }),
   execute: async ({ videoUrl }) => {
     try {
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ videoUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to transcribe video");
+      if (!videoUrl) {
+        return {
+          success: false,
+          error: "Video URL is required",
+        };
       }
 
-      const result = await response.json();
-      return result;
+      // Check if OpenAI API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        return {
+          success: false,
+          error: "OpenAI API key not configured",
+        };
+      }
+
+      // Download the video content
+      const videoResponse = await fetch(videoUrl);
+      if (!videoResponse.ok) {
+        return {
+          success: false,
+          error: "Failed to fetch video",
+        };
+      }
+
+      // Get the video as an array buffer
+      const videoArrayBuffer = await videoResponse.arrayBuffer();
+      const videoBuffer = Buffer.from(videoArrayBuffer);
+
+      // Use AI SDK's experimental transcribe function
+      const transcription = await experimental_transcribe({
+        model: openai.transcription("whisper-1"),
+        audio: videoBuffer,
+      });
+
+      // Return the transcription results
+      return {
+        success: true,
+        data: {
+          text: transcription.text,
+          segments: transcription.segments || [],
+          language: transcription.language,
+        },
+      };
     } catch (error) {
       return {
         success: false,
