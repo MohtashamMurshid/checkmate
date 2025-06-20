@@ -4,13 +4,20 @@ import { HowItWorks } from "@/components/how-it-works";
 import { CTASection } from "@/components/cta-section";
 import { Footer } from "@/components/footer";
 
-export default function Home() {
+interface HomeProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = await searchParams;
+  const linkParam = typeof params.link === "string" ? params.link : "";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
 
       <div className="mx-auto max-w-5xl px-4 md:px-6">
-        <HeroSection />
+        <HeroSection initialUrl={linkParam} />
         <HowItWorks />
         <CTASection />
       </div>
