@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,30 +23,19 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [url, setUrl] = useState(initialUrl);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     setUrl(initialUrl);
   }, [initialUrl]);
 
-  const handleUrlChange = (newUrl: string) => {
-    setUrl(newUrl);
-
-    // Update URL params immediately
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-
-    if (newUrl.trim()) {
-      current.set("link", newUrl.trim());
-      router.replace(`?${current.toString()}`, { scroll: false });
-    } else {
-      current.delete("link");
-      const search = current.toString();
-      router.replace(search ? `?${search}` : "/", { scroll: false });
-    }
-  };
-
   const handleAnalyze = async () => {
     if (!url.trim()) return;
+
+    // Update URL with query parameter
+    const params = new URLSearchParams();
+    params.set("link", url.trim());
+    router.replace(`?${params.toString()}`);
+
     await analyzeTikTok(url.trim());
   };
 
@@ -58,12 +47,6 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const handleReset = () => {
     setUrl("");
     reset();
-
-    // Clear URL params
-    const current = new URLSearchParams(Array.from(searchParams.entries()));
-    current.delete("link");
-    const search = current.toString();
-    router.replace(search ? `?${search}` : "/", { scroll: false });
   };
 
   return (
@@ -94,7 +77,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
               placeholder="Paste TikTok link here..."
               className="flex-1 h-12 text-base min-w-0"
               value={url}
-              onChange={(e) => handleUrlChange(e.target.value)}
+              onChange={(e) => setUrl(e.target.value)}
               disabled={isLoading}
             />
             <Button

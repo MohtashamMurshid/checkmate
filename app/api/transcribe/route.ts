@@ -13,6 +13,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { success: false, error: "OpenAI API key not configured" },
+        { status: 500 }
+      );
+    }
+
     // Download the video content
     const videoResponse = await fetch(videoUrl);
     if (!videoResponse.ok) {

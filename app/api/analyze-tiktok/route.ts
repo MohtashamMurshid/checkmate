@@ -42,20 +42,16 @@ export async function POST(request: NextRequest) {
     // If it's a video, try to transcribe it
     if (result.result.type === "video" && videoUrl) {
       try {
-        const transcriptionResponse = await fetch(
-          `${
-            process.env.VERCEL_URL
-              ? `https://${process.env.VERCEL_URL}`
-              : "http://localhost:3000"
-          }/api/transcribe`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ videoUrl }),
-          }
-        );
+        // For local development, use localhost directly
+        const baseUrl = "http://localhost:3000";
+
+        const transcriptionResponse = await fetch(`${baseUrl}/api/transcribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ videoUrl }),
+        });
 
         if (transcriptionResponse.ok) {
           const transcriptionResult = await transcriptionResponse.json();
@@ -63,8 +59,7 @@ export async function POST(request: NextRequest) {
             transcription = transcriptionResult.data;
           }
         }
-      } catch (error) {
-        console.error("Transcription failed:", error);
+      } catch {
         // Continue without transcription if it fails
       }
     }
