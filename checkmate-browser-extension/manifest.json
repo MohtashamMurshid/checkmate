@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "TikTok Extra Button",
+  "version": "1.0",
+  "description": "Adds a custom button to TikTok website.",
+  "permissions": ["scripting"],
+  "content_scripts": [
+    {
+      "matches": ["*://www.tiktok.com/*"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ]
+}
+
