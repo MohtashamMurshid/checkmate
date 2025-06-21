@@ -39,3 +39,68 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Flutter/Dart
+**/build/
+**/android/build/
+**/ios/build/
+**/linux/build/
+**/macos/build/
+**/windows/build/
+**/web/build/
+
+# Flutter dependencies
+**/pubspec.lock
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.dart_tool/
+
+# Flutter generated files
+**/flutter_*.png
+**/flutter_*.log
+**/GeneratedPluginRegistrant.*
+
+# iOS specific
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Generated.xcconfig
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# Android specific
+**/android/local.properties
+**/android/key.properties
+**/android/.gradle/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+
+# IntelliJ/Android Studio
+**/.idea/
+**/*.iml
+**/*.ipr
+**/*.iws
+
+# VS Code
+**/.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Symbolication related
+**/app.*.symbols
+
+# Obfuscation related
+**/app.*.map.json
+
+# Dart coverage
+**/coverage/
+
+# Flutter web
+**/web/.last_build_id
