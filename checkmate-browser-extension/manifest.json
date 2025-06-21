@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "CheckMate",
+  "version": "1.0",
+  "description": "Analyze content with CheckMate",
+  "icons": {
+    "32": "icon_32.png",
+    "128": "icon_128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["generic-content.js", "tiktok-content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
+

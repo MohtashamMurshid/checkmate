@@ -1,0 +1,9 @@
+.my-tiktok-btn {
+  background-color: #fe2c55;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
