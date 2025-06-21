@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { transcribeVideoDirectly } from "../../../tools/index";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
-import {
-  detectNewsContent,
-  researchAndFactCheck,
-} from "../../../tools/fact-checking";
+import { researchAndFactCheck } from "../../../tools/fact-checking";
 
 // Define interfaces for proper typing
 interface FactCheckResult {
@@ -88,137 +85,106 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform fact-checking if transcription is available
-    let newsDetection = null;
     let factCheckResults = null;
 
     if (transcription && transcription.text) {
       try {
         console.log("🔍 Starting fact-checking process...");
 
-        // First, detect if the content contains news/factual claims
-        console.log("📰 Detecting news content...");
-        const newsDetectionResult = await detectNewsContent.execute(
+        // Break down the transcription into key statements for fact-checking
+        const sentences = transcription.text
+          .split(/[.!?]+/)
+          .filter((s) => s.trim().length > 20)
+          .slice(0, 3); // Take first 3 substantial sentences
+
+        const claimsToCheck =
+          sentences.length > 0 ? sentences : [transcription.text.slice(0, 500)];
+
+        console.log("✅ Starting fact-check for claims:", claimsToCheck);
+
+        // Prepare comprehensive context with video metadata
+        const videoDescription = result.result.desc || "";
+        const videoCreator = result.result.author?.nickname || "Unknown";
+
+        const contextPrompt = `
+TikTok Video Analysis Context:
+- Creator: ${videoCreator}
+- Video Description: "${videoDescription}"
+- Video URL: ${actualTiktokUrl}
+- Platform: TikTok
+
+Transcribed Content:
+"${transcription.text}"
+
+Please fact-check the claims from this TikTok video content, paying special attention to both the video description and the transcribed speech. Consider the context that this is social media content that may contain opinions, personal experiences, or claims that need verification.`;
+
+        const factCheck = await researchAndFactCheck.execute(
           {
-            transcription: transcription.text,
-            title: result.result.desc || "",
+            claims: claimsToCheck,
+            context: contextPrompt,
           },
           {
-            toolCallId: "detect-news-content",
+            toolCallId: "research-fact-check",
             messages: [],
           }
         );
 
-        console.log("📰 News detection result:", newsDetectionResult);
+        console.log("🔬 Fact-check result:", factCheck);
 
-        if (newsDetectionResult.success && newsDetectionResult.data) {
-          newsDetection = {
-            hasNewsContent: newsDetectionResult.data.needsFactCheck,
-            confidence: 0.8,
-            newsKeywordsFound: [],
-            potentialClaims: newsDetectionResult.data.potentialClaims || [],
-            needsFactCheck: newsDetectionResult.data.needsFactCheck,
-            contentType:
-              newsDetectionResult.data.contentType || "entertainment",
+        if (factCheck.success && factCheck.data) {
+          factCheckResults = {
+            totalClaims: claimsToCheck.length,
+            checkedClaims: factCheck.data.results?.length || 0,
+            results:
+              (factCheck.data as FactCheckData).results?.map(
+                (r: FactCheckResult) => ({
+                  claim: r.claim,
+                  status: r.status,
+                  confidence: r.confidence,
+                  analysis: r.analysis,
+                  sources: r.sources || [],
+                  error: r.error,
+                })
+              ) || [],
+            summary: (factCheck.data as FactCheckData).summary || {
+              verifiedTrue: 0,
+              verifiedFalse: 0,
+              misleading: 0,
+              unverifiable: 0,
+              needsVerification: 0,
+            },
           };
 
-          console.log("📊 Formatted news detection:", newsDetection);
-
-          // If factual content is detected, perform fact-checking
-          if (newsDetectionResult.data.needsFactCheck) {
-            let claimsToCheck = newsDetectionResult.data.potentialClaims || [];
-
-            // If no specific claims were extracted, use the transcription text as a general claim
-            if (claimsToCheck.length === 0) {
-              // Break down the transcription into key statements for fact-checking
-              const sentences = transcription.text
-                .split(/[.!?]+/)
-                .filter((s) => s.trim().length > 20)
-                .slice(0, 3); // Take first 3 substantial sentences
-
-              claimsToCheck =
-                sentences.length > 0
-                  ? sentences
-                  : [transcription.text.slice(0, 500)];
-            }
-
-            console.log("✅ Starting fact-check for claims:", claimsToCheck);
-
-            const factCheck = await researchAndFactCheck.execute(
-              {
-                claims: claimsToCheck,
-                context: `TikTok video by ${result.result.author?.nickname || "Unknown"}: ${result.result.desc || ""}`,
-              },
-              {
-                toolCallId: "research-fact-check",
-                messages: [],
-              }
-            );
-
-            console.log("🔬 Fact-check result:", factCheck);
-
-            if (factCheck.success && factCheck.data) {
-              factCheckResults = {
-                totalClaims: claimsToCheck.length,
-                checkedClaims: factCheck.data.results?.length || 0,
-                results:
-                  (factCheck.data as FactCheckData).results?.map(
-                    (r: FactCheckResult) => ({
-                      claim: r.claim,
-                      status: r.status,
-                      confidence: r.confidence,
-                      analysis: r.analysis,
-                      sources: r.sources || [],
-                      error: r.error,
-                    })
-                  ) || [],
-                summary: (factCheck.data as FactCheckData).summary || {
-                  verifiedTrue: 0,
-                  verifiedFalse: 0,
-                  misleading: 0,
-                  unverifiable: 0,
-                  needsVerification: 0,
-                },
-              };
-
-              console.log("📋 Final fact-check results:", factCheckResults);
-            } else {
-              console.warn(
-                "❌ Fact-check failed or returned no data:",
-                factCheck
-              );
-
-              // Create a fallback fact-check result
-              factCheckResults = {
-                totalClaims: claimsToCheck.length,
-                checkedClaims: 0,
-                results: claimsToCheck.map((claim: string) => ({
-                  claim,
-                  status: "requires_verification",
-                  confidence: 0.5,
-                  analysis:
-                    "Automatic fact-checking failed. Manual verification recommended.",
-                  sources: [],
-                  error: "Fact-checking service temporarily unavailable",
-                })),
-                summary: {
-                  verifiedTrue: 0,
-                  verifiedFalse: 0,
-                  misleading: 0,
-                  unverifiable: 0,
-                  needsVerification: claimsToCheck.length,
-                },
-              };
-
-              console.log(
-                "🔄 Using fallback fact-check results:",
-                factCheckResults
-              );
-            }
-          } else {
-            console.log("ℹ️ No fact-checking needed or no claims detected");
-          }
+          console.log("📋 Final fact-check results:", factCheckResults);
         } else {
-          console.warn("❌ News detection failed:", newsDetectionResult);
+          console.warn("❌ Fact-check failed or returned no data:", factCheck);
+
+          // Create a fallback fact-check result
+          factCheckResults = {
+            totalClaims: claimsToCheck.length,
+            checkedClaims: 0,
+            results: claimsToCheck.map((claim: string) => ({
+              claim,
+              status: "requires_verification",
+              confidence: 0.5,
+              analysis:
+                "Automatic fact-checking failed. Manual verification recommended.",
+              sources: [],
+              error: "Fact-checking service temporarily unavailable",
+            })),
+            summary: {
+              verifiedTrue: 0,
+              verifiedFalse: 0,
+              misleading: 0,
+              unverifiable: 0,
+              needsVerification: claimsToCheck.length,
+            },
+          };
+
+          console.log(
+            "🔄 Using fallback fact-check results:",
+            factCheckResults
+          );
         }
       } catch (error) {
         console.error("💥 Fact-checking process failed:", error);
@@ -241,9 +207,8 @@ export async function POST(request: NextRequest) {
         creator: result.result.author?.nickname || "Unknown",
         originalUrl: actualTiktokUrl,
       },
-      newsDetection,
       factCheck: factCheckResults,
-      requiresFactCheck: newsDetection?.needsFactCheck || false,
+      requiresFactCheck: !!factCheckResults,
     };
 
     return NextResponse.json({
