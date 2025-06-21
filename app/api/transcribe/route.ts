@@ -3,6 +3,7 @@ import { transcribeVideoDirectly } from "../../../tools/index";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
 import { Scraper } from "@the-convocation/twitter-scraper";
 import { researchAndFactCheck } from "../../../tools/fact-checking";
+import { calculateCreatorCredibilityRating } from "../../../tools/content-analysis";
 
 // Define interfaces for proper typing
 export interface FactCheckData {
@@ -187,6 +188,7 @@ export async function POST(request: NextRequest) {
 
     // Perform fact-checking if we have content (transcription or text)
     let factCheckResults = null;
+    let creatorCredibilityRating = null;
     const textToFactCheck = transcription?.text || contentText;
 
     if (textToFactCheck && textToFactCheck.trim().length > 0) {
@@ -254,6 +256,52 @@ Please fact-check the claims from this ${
             };
 
             console.log("✅ Verification result:", factCheckResults);
+
+            // Calculate creator credibility rating
+            try {
+              console.log("📊 Calculating creator credibility rating...");
+
+              const credibilityResult =
+                await calculateCreatorCredibilityRating.execute(
+                  {
+                    factCheckResult: {
+                      verdict: factCheckResults.verdict,
+                      confidence: factCheckResults.confidence,
+                      isVerified: factCheckResults.isVerified,
+                    },
+                    contentMetadata: {
+                      creator: creator,
+                      platform: platform,
+                      title: description,
+                      hasTranscription: !!transcription?.text,
+                      contentType: result.result.type || "unknown",
+                    },
+                    analysisMetrics: {
+                      hasNewsContent: true, // Assuming news content since we're fact-checking
+                      needsFactCheck: true,
+                      contentLength: textToFactCheck.length,
+                    },
+                  },
+                  {
+                    toolCallId: "credibility-rating",
+                    messages: [],
+                  }
+                );
+
+              if (credibilityResult.success && credibilityResult.data) {
+                creatorCredibilityRating =
+                  credibilityResult.data.credibilityRating;
+                console.log(
+                  "⭐ Creator credibility rating:",
+                  creatorCredibilityRating
+                );
+              }
+            } catch (error) {
+              console.warn(
+                "⚠️ Failed to calculate creator credibility rating:",
+                error
+              );
+            }
           } else {
             console.warn("❌ Verification failed:", factCheck);
             const contentSummary = textToFactCheck.slice(0, 200);
@@ -308,6 +356,7 @@ Please fact-check the claims from this ${
       },
       factCheck: factCheckResults,
       requiresFactCheck: !!factCheckResults,
+      creatorCredibilityRating: creatorCredibilityRating,
     };
 
     return NextResponse.json({

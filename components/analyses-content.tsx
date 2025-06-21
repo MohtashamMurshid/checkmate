@@ -28,6 +28,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AnalysisRenderer } from "@/components/analysis-renderer";
+import { CreatorCredibilityDisplay } from "@/components/creator-credibility-display";
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -167,14 +168,39 @@ export function AnalysisPage({
                   <strong>Description:</strong> {analysis.metadata.description}
                 </div>
               )}
-            <a
-              href={analysis.videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
-            >
-              View Original Video <ExternalLink className="h-3 w-3" />
-            </a>
+
+            {/* Creator Credibility Rating */}
+            {analysis.metadata?.creator && analysis.metadata?.platform && (
+              <div className="mb-4">
+                <CreatorCredibilityDisplay
+                  creatorId={analysis.metadata.creator}
+                  platform={analysis.metadata.platform}
+                  showDetails={false}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              <a
+                href={analysis.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+              >
+                View Original Video <ExternalLink className="h-3 w-3" />
+              </a>
+
+              {analysis.metadata?.creator && analysis.metadata?.platform && (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={`/creator/${encodeURIComponent(analysis.metadata.creator)}?platform=${analysis.metadata.platform}`}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    View Author
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 

@@ -14,6 +14,28 @@ const schema = defineSchema({
     updatedAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]),
 
+  // Content Creator credibility tracking
+  contentCreators: defineTable({
+    // Creator identification
+    creatorId: v.string(), // Unique identifier (username, unique_id, etc.)
+    platform: v.string(), // "tiktok", "twitter", etc.
+    creatorName: v.optional(v.string()), // Display name/nickname
+
+    // Credibility metrics
+    credibilityRating: v.number(), // 0-10 rating
+    totalAnalyses: v.number(), // Number of analyses for this creator
+    totalCredibilityScore: v.number(), // Sum of all individual ratings for weighted average
+
+    // Additional creator info
+    lastAnalyzedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_creator_platform", ["creatorId", "platform"])
+    .index("by_platform", ["platform"])
+    .index("by_credibility_rating", ["credibilityRating"])
+    .index("by_last_analyzed", ["lastAnalyzedAt"]),
+
   // TikTok analysis results linked to users
   tiktokAnalyses: defineTable({
     userId: v.id("users"), // References the users table
@@ -98,6 +120,10 @@ const schema = defineSchema({
       })
     ),
 
+    // Creator credibility rating for this specific analysis
+    creatorCredibilityRating: v.optional(v.number()), // 0-10 rating calculated for this analysis
+    contentCreatorId: v.optional(v.id("contentCreators")), // Reference to the content creator
+
     // Analysis flags
     requiresFactCheck: v.boolean(),
 
@@ -106,7 +132,21 @@ const schema = defineSchema({
     .index("by_user", ["userId"])
     .index("by_created_at", ["createdAt"])
     .index("by_requires_fact_check", ["requiresFactCheck"])
-    .index("by_user_and_platform", ["userId", "metadata.platform"]),
+    .index("by_user_and_platform", ["userId", "metadata.platform"])
+    .index("by_content_creator", ["contentCreatorId"]),
+
+  // Comments about content creators
+  creatorComments: defineTable({
+    creatorId: v.string(), // Creator's unique identifier
+    platform: v.string(), // Platform (tiktok, twitter, etc.)
+    userId: v.id("users"), // User who posted the comment
+    content: v.string(), // Comment content
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_creator_platform", ["creatorId", "platform"])
+    .index("by_user", ["userId"])
+    .index("by_created_at", ["createdAt"]),
 });
 
 export default schema;

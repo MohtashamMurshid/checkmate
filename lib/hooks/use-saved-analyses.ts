@@ -36,3 +36,24 @@ export function useDeleteTikTokAnalysis() {
 export function useSaveTikTokAnalysis() {
   return useMutation(api.tiktokAnalyses.saveTikTokAnalysis);
 }
+
+// Hook to save analysis with creator credibility rating
+export function useSaveTikTokAnalysisWithCredibility() {
+  return useMutation(api.tiktokAnalyses.saveTikTokAnalysisWithCredibility);
+}
+
+// Hook to get content creator by platform and ID
+export function useContentCreator(creatorId: string, platform: string) {
+  return useQuery(api.tiktokAnalyses.getContentCreator, {
+    creatorId,
+    platform,
+  });
+}
+
+// Hook to get top creators by credibility rating
+export function useTopCreatorsByCredibility(platform?: string, limit?: number) {
+  return useQuery(api.tiktokAnalyses.getTopCreatorsByCredibility, {
+    platform,
+    limit,
+  });
+}

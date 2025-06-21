@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useSaveTikTokAnalysis } from "./use-saved-analyses";
+import {
+  useSaveTikTokAnalysis,
+  useSaveTikTokAnalysisWithCredibility,
+} from "./use-saved-analyses";
 import { useConvexAuth } from "convex/react";
 
 interface TranscriptionData {
@@ -26,6 +29,7 @@ interface FactCheckSource {
   url: string;
   source: string;
   relevance: number;
+  description?: string;
 }
 
 interface FactCheckResult {
@@ -48,6 +52,7 @@ interface FactCheckData {
     unverifiable: number;
     needsVerification: number;
   };
+  sources?: FactCheckSource[];
 }
 
 interface TikTokAnalysisData {
@@ -62,6 +67,7 @@ interface TikTokAnalysisData {
   newsDetection: NewsDetection | null;
   factCheck: FactCheckData | null;
   requiresFactCheck: boolean;
+  creatorCredibilityRating?: number;
 }
 
 interface TikTokAnalysisResult {
@@ -76,6 +82,8 @@ export function useTikTokAnalysis() {
   const [result, setResult] = useState<TikTokAnalysisResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTikTokAnalysis = useSaveTikTokAnalysis();
+  const saveTikTokAnalysisWithCredibility =
+    useSaveTikTokAnalysisWithCredibility();
 
   const analyzeTikTok = async (
     url: string,
@@ -139,37 +147,106 @@ export function useTikTokAnalysis() {
         console.log("❌ No fact-check results found in response");
       }
 
-      // Save to database if requested and analysis was successful
       if (saveToDb && isAuthenticated && analysis.success && analysis.data) {
         try {
           setIsSaving(true);
-          await saveTikTokAnalysis({
-            videoUrl: analysis.data.metadata.originalUrl,
-            transcription: {
-              text: analysis.data.transcription.text,
-              duration: undefined, // API doesn't return duration yet
-              language: analysis.data.transcription.language,
-            },
-            metadata: analysis.data.metadata,
-            newsDetection: analysis.data.newsDetection || undefined,
-            factCheck: analysis.data.factCheck
-              ? {
-                  ...analysis.data.factCheck,
-                  results: analysis.data.factCheck.results.map((result) => ({
-                    claim: result.claim,
-                    status: result.status,
-                    confidence: result.confidence,
-                    analysis: result.analysis,
-                    sources: result.sources?.map((s) => s.url) || [],
-                    error: result.error,
-                  })),
-                }
-              : undefined,
-            requiresFactCheck: analysis.data.requiresFactCheck,
-          });
-          console.log("✅ Analysis saved to database");
+
+          // Debug save logic
+          console.log(
+            "🔍 About to save analysis, credibility rating:",
+            analysis.data.creatorCredibilityRating
+          );
+          console.log(
+            "🔍 Condition check (rating !== undefined):",
+            analysis.data.creatorCredibilityRating !== undefined
+          );
+
+          // Use enhanced save function if credibility rating is available
+          if (analysis.data.creatorCredibilityRating !== undefined) {
+            console.log(
+              "✅ Using enhanced save function with credibility rating"
+            );
+            await saveTikTokAnalysisWithCredibility({
+              videoUrl: analysis.data.metadata.originalUrl,
+              transcription: {
+                text: analysis.data.transcription.text,
+                duration: undefined, // API doesn't return duration yet
+                language: analysis.data.transcription.language,
+              },
+              metadata: analysis.data.metadata,
+              newsDetection: analysis.data.newsDetection || undefined,
+              factCheck: analysis.data.factCheck
+                ? {
+                    ...analysis.data.factCheck,
+                    sources: analysis.data.factCheck.sources?.map((s) => ({
+                      title: s.title,
+                      url: s.url,
+                      source: s.source,
+                      relevance: s.relevance,
+                    })),
+                    results: (analysis.data.factCheck.results || []).map(
+                      (result) => ({
+                        claim: result.claim,
+                        status: result.status,
+                        confidence: result.confidence,
+                        analysis: result.analysis,
+                        sources: result.sources?.map((s) => s.url) || [],
+                        error: result.error,
+                      })
+                    ),
+                  }
+                : undefined,
+              requiresFactCheck: analysis.data.requiresFactCheck,
+              creatorCredibilityRating: analysis.data.creatorCredibilityRating,
+            });
+            console.log(
+              "✅ Analysis with credibility rating saved to database"
+            );
+          } else {
+            // Fallback to regular save if no credibility rating
+            console.log(
+              "⚠️ No credibility rating found, using regular save function"
+            );
+            await saveTikTokAnalysis({
+              videoUrl: analysis.data.metadata.originalUrl,
+              transcription: {
+                text: analysis.data.transcription.text,
+                duration: undefined, // API doesn't return duration yet
+                language: analysis.data.transcription.language,
+              },
+              metadata: analysis.data.metadata,
+              newsDetection: analysis.data.newsDetection || undefined,
+              factCheck: analysis.data.factCheck
+                ? {
+                    ...analysis.data.factCheck,
+                    sources: analysis.data.factCheck.sources?.map((s) => ({
+                      title: s.title,
+                      url: s.url,
+                      source: s.source,
+                      relevance: s.relevance,
+                    })),
+                    results: (analysis.data.factCheck.results || []).map(
+                      (result) => ({
+                        claim: result.claim,
+                        status: result.status,
+                        confidence: result.confidence,
+                        analysis: result.analysis,
+                        sources: result.sources?.map((s) => s.url) || [],
+                        error: result.error,
+                      })
+                    ),
+                  }
+                : undefined,
+              requiresFactCheck: analysis.data.requiresFactCheck,
+            });
+            console.log("✅ Analysis saved to database");
+          }
         } catch (saveError) {
-          console.warn("Failed to save analysis to database:", saveError);
+          console.error("💥 Failed to save analysis to database:", saveError);
+          console.error(
+            "💥 Save error details:",
+            JSON.stringify(saveError, null, 2)
+          );
           // Don't fail the entire operation if saving fails
         } finally {
           setIsSaving(false);
