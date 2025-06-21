@@ -24,6 +24,7 @@ import { useSaveTikTokAnalysis } from "@/lib/hooks/use-saved-analyses";
 import { useConvexAuth } from "convex/react";
 import { toast } from "sonner";
 import { AnalysisRenderer } from "@/components/analysis-renderer";
+import Link from "next/link";
 
 interface HeroSectionProps {
   initialUrl?: string;
@@ -669,12 +670,12 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                       {/* Login prompt for non-authenticated users */}
                       {!isAuthenticated && (
                         <p className="text-sm text-muted-foreground mt-2">
-                          <a
+                          <Link
                             href="/sign-in"
                             className="text-primary hover:underline"
                           >
                             Sign in
-                          </a>{" "}
+                          </Link>{" "}
                           to save your analysis results
                         </p>
                       )}
