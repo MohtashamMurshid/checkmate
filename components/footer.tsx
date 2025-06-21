@@ -1,6 +1,9 @@
+"use client";
 import { CheckCircleIcon } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
 
 export function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="border-t bg-background">
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-8">
@@ -12,7 +15,7 @@ export function Footer() {
             <span className="font-semibold">Checkmate</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2024 Checkmate. Fighting misinformation with AI.
+            {t.fightMisinformation}
           </p>
         </div>
       </div>

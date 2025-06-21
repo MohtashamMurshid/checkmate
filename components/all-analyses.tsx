@@ -116,12 +116,7 @@ export function AllAnalyses() {
                             analysis.factCheck.verdict.slice(1)}
                         </span>
                       )}
-                      {typeof analysis.userRating === "number" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                          {analysis.user?.username || "User"} rated:{" "}
-                          {analysis.userRating.toFixed(1)} / 5
-                        </span>
-                      )}
+
                       {typeof analysis.creatorCredibilityRating ===
                         "number" && (
                         <CreatorCredibilityBadge

@@ -9,17 +9,19 @@ import {
   useMisinformationSources,
 } from "@/lib/hooks/use-credible-sources";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/components/language-provider";
 
 const TopCredibleSources = () => {
   const credibleSources = useCredibleSources(undefined, 5);
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <Card className="">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <CheckCircle className="h-5 w-5 " />
-          Top Credible Sources
+          {t.topCredibleSources}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -39,7 +41,7 @@ const TopCredibleSources = () => {
           ))
         ) : credibleSources?.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No credible sources found yet
+            {t.noCredibleSources}
           </p>
         ) : (
           credibleSources?.map((creator) => (
@@ -75,7 +77,7 @@ const TopCredibleSources = () => {
                   )
                 }
               >
-                View Details
+                {t.viewDetails}
               </Button>
             </div>
           ))
@@ -88,13 +90,14 @@ const TopCredibleSources = () => {
 const TopMisinformationSources = () => {
   const misinformationSources = useMisinformationSources(undefined, 5);
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <XCircle className="h-5 w-5 " />
-          Top Misinformation Sources
+          {t.topMisinformationSources}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -113,7 +116,7 @@ const TopMisinformationSources = () => {
           ))
         ) : misinformationSources?.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No misinformation sources found yet
+            {t.noMisinformationSources}
           </p>
         ) : (
           misinformationSources?.map((creator) => (
@@ -149,7 +152,7 @@ const TopMisinformationSources = () => {
                   )
                 }
               >
-                View Details
+                {t.viewDetails}
               </Button>
             </div>
           ))
@@ -160,11 +163,12 @@ const TopMisinformationSources = () => {
 };
 
 export default function NewsPage() {
+  const { t } = useLanguage();
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto p-4">
       {/* Main Content Feed */}
       <div className="md:col-span-2 space-y-6">
-        <h1 className="text-2xl font-bold">Trending News</h1>
+        <h1 className="text-2xl font-bold">{t.trendingOnCheckmate}</h1>
         <AllAnalyses />
       </div>
 

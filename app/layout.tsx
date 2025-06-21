@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider } from "@/components/language-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/convex-client-provider";
 import UserSync from "@/components/user-sync";
@@ -36,18 +37,20 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <UserSync />
-              <Header />
+            <LanguageProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                <UserSync />
+                <Header />
 
-              {children}
-              <Toaster richColors />
-            </ThemeProvider>
+                {children}
+                <Toaster richColors />
+              </ThemeProvider>
+            </LanguageProvider>
           </ConvexClientProvider>
         </ClerkProvider>
       </body>

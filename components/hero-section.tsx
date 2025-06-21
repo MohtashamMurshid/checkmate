@@ -25,6 +25,7 @@ import { useSaveTikTokAnalysis } from "@/lib/hooks/use-saved-analyses";
 import { useConvexAuth } from "convex/react";
 import { toast } from "sonner";
 import { AnalysisRenderer } from "@/components/analysis-renderer";
+import { useLanguage } from "@/components/language-provider";
 import Link from "next/link";
 
 interface HeroSectionProps {
@@ -55,6 +56,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const { isAuthenticated } = useConvexAuth();
   const saveTikTokAnalysis = useSaveTikTokAnalysis();
   const router = useRouter();
+  const { t } = useLanguage();
 
   useEffect(() => {
     setUrl(initialUrl);
@@ -63,16 +65,16 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   useEffect(() => {
     if (result) {
       if (result.success) {
-        toast.success("Analysis complete!");
+        toast.success(t.analysisComplete);
       } else if (result.error) {
         toast.error(result.error);
       }
     }
-  }, [result]);
+  }, [result, t]);
 
   const handleAnalyze = async () => {
     if (!url.trim()) {
-      toast.error("Please enter a URL to analyze.");
+      toast.error(t.enterUrl);
       return;
     }
 
@@ -81,7 +83,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
     params.set("link", url.trim());
     router.replace(`?${params.toString()}`);
 
-    toast.info("Starting analysis... This may take a moment.");
+    toast.info(t.analysisStarted);
     await analyzeTikTok(url.trim());
   };
 
@@ -99,14 +101,14 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
 
   const handleSaveAnalysis = async () => {
     if (!result?.success || !result.data || !isAuthenticated) {
-      toast.error("Cannot save analysis - please ensure you're logged in");
+      toast.error(t.cannotSave);
       return;
     }
 
     // Check if already saved by the automatic save in useTikTokAnalysis hook
     // This prevents duplicate saves
     if (isSaved) {
-      toast.info("Analysis already saved!");
+      toast.info(t.alreadySaved);
       return;
     }
 
@@ -172,10 +174,10 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
       await saveTikTokAnalysis(saveData);
 
       setIsSaved(true);
-      toast.success("Analysis saved successfully!");
+      toast.success(t.analysisSaved);
     } catch (error) {
       console.error("Failed to save analysis:", error);
-      toast.error("Failed to save analysis. Please try again.");
+      toast.error(t.failedToSave);
     } finally {
       setIsSaving(false);
     }
@@ -260,15 +262,10 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
           AI-Powered Fact Checking
         </Badge>
         <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
-          Verify Content with{" "}
-          <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Checkmate
-          </span>
+          {t.heroTitle}
         </h1>
         <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
-          Combat misinformation with our AI-powered fact-checking tool. Paste
-          any TikTok/Twitter(X) link to get instant transcription, news
-          detection, and credibility reports with verified sources.
+          {t.heroSubtitle}
         </p>
         <div className="mx-auto max-w-2xl space-y-4">
           <form
@@ -276,7 +273,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
             className="flex gap-3 items-center justify-center"
           >
             <Input
-              placeholder="Paste TikTok/Twitter(X) link here..."
+              placeholder={t.urlPlaceholder}
               className="flex-1 h-12 text-base min-w-0"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -293,7 +290,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
               ) : (
                 <PlayIcon className="h-4 w-4 mr-2" />
               )}
-              {isLoading ? "Analyzing..." : "Analyze"}
+              {isLoading ? t.analyzing : t.analyzeButton}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground text-center">
@@ -312,7 +309,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                   ) : (
                     <AlertCircleIcon className="h-5 w-5 text-red-500" />
                   )}
-                  {result.success ? "Analysis Complete" : "Analysis Failed"}
+                  {result.success ? t.analysisComplete : "Analysis Failed"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -693,15 +690,15 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                               <BookmarkIcon className="h-4 w-4" />
                             )}
                             {isSaved
-                              ? "Saved!"
+                              ? t.saved
                               : isSaving
-                                ? "Saving..."
-                                : "Save Analysis"}
+                                ? t.saving
+                                : t.saveAnalysis}
                           </Button>
                         )}
 
                         <Button variant="outline" onClick={handleReset}>
-                          Analyze Another Video
+                          {t.reset}
                         </Button>
                       </div>
 
@@ -723,7 +720,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                   <div className="text-left">
                     <p className="text-red-500 mb-4">{result.error}</p>
                     <Button variant="outline" onClick={handleReset}>
-                      Try Again
+                      {t.tryAgain}
                     </Button>
                   </div>
                 )}
