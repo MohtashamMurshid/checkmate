@@ -221,21 +221,24 @@ export async function POST(request: NextRequest) {
       console.warn("News detection or fact-checking failed:", error);
     }
 
+    // Prepare response data
+    const responseData = {
+      transcription: transcriptionResult.data,
+      metadata: {
+        title: videoTitle,
+        description: videoDescription,
+        creator,
+        originalUrl: tiktokUrl || videoUrl,
+      },
+      newsDetection,
+      factCheck: factCheckResults,
+      requiresFactCheck: newsDetection?.hasNewsContent || false,
+    };
+
     // Return comprehensive results
     const response = {
       success: true,
-      data: {
-        transcription: transcriptionResult.data,
-        metadata: {
-          title: videoTitle,
-          description: videoDescription,
-          creator,
-          originalUrl: tiktokUrl || videoUrl,
-        },
-        newsDetection,
-        factCheck: factCheckResults,
-        requiresFactCheck: newsDetection?.hasNewsContent || false,
-      },
+      data: responseData,
     };
 
     return NextResponse.json(response);

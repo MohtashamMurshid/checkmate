@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSaveTikTokAnalysis } from "./use-saved-analyses";
 
 interface TranscriptionData {
   text: string;
@@ -70,8 +71,13 @@ interface TikTokAnalysisResult {
 export function useTikTokAnalysis() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<TikTokAnalysisResult | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTikTokAnalysis = useSaveTikTokAnalysis();
 
-  const analyzeTikTok = async (url: string): Promise<TikTokAnalysisResult> => {
+  const analyzeTikTok = async (
+    url: string,
+    saveToDb = true
+  ): Promise<TikTokAnalysisResult> => {
     setIsLoading(true);
     setResult(null);
 
@@ -104,6 +110,44 @@ export function useTikTokAnalysis() {
         console.log("✅ Fact-Check Results:", analysis.data.factCheck);
         console.log("📋 Individual Claims:", analysis.data.factCheck.results);
       }
+
+      // Save to database if requested and analysis was successful
+      if (saveToDb && analysis.success && analysis.data) {
+        try {
+          setIsSaving(true);
+          await saveTikTokAnalysis({
+            videoUrl: analysis.data.metadata.originalUrl,
+            transcription: {
+              text: analysis.data.transcription.text,
+              duration: undefined, // API doesn't return duration yet
+              language: analysis.data.transcription.language,
+            },
+            metadata: analysis.data.metadata,
+            newsDetection: analysis.data.newsDetection || undefined,
+            factCheck: analysis.data.factCheck
+              ? {
+                  ...analysis.data.factCheck,
+                  results: analysis.data.factCheck.results.map((result) => ({
+                    claim: result.claim,
+                    status: result.status,
+                    confidence: result.confidence,
+                    analysis: result.analysis,
+                    sources: result.sources?.map((s) => s.url) || [],
+                    error: result.error,
+                  })),
+                }
+              : undefined,
+            requiresFactCheck: analysis.data.requiresFactCheck,
+          });
+          console.log("✅ Analysis saved to database");
+        } catch (saveError) {
+          console.warn("Failed to save analysis to database:", saveError);
+          // Don't fail the entire operation if saving fails
+        } finally {
+          setIsSaving(false);
+        }
+      }
+
       setResult(analysis);
       return analysis;
     } catch (error) {
@@ -127,6 +171,7 @@ export function useTikTokAnalysis() {
   return {
     analyzeTikTok,
     isLoading,
+    isSaving,
     result,
     reset,
   };

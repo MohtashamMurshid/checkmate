@@ -18,22 +18,71 @@ const schema = defineSchema({
   tiktokAnalyses: defineTable({
     userId: v.id("users"), // References the users table
     videoUrl: v.string(),
-    transcription: v.optional(v.string()),
-    analysis: v.optional(
+
+    // Transcription data
+    transcription: v.optional(
       v.object({
-        credibilityScore: v.number(),
-        factCheckResults: v.array(
-          v.object({
-            claim: v.string(),
-            verification: v.string(),
-            sources: v.array(v.string()),
-          })
-        ),
-        summary: v.string(),
+        text: v.string(),
+        duration: v.optional(v.number()),
+        language: v.optional(v.string()),
       })
     ),
+
+    // Video metadata
+    metadata: v.optional(
+      v.object({
+        title: v.string(),
+        description: v.optional(v.string()),
+        creator: v.optional(v.string()),
+        originalUrl: v.string(),
+      })
+    ),
+
+    // News detection results
+    newsDetection: v.optional(
+      v.object({
+        hasNewsContent: v.boolean(),
+        confidence: v.number(),
+        newsKeywordsFound: v.array(v.string()),
+        potentialClaims: v.array(v.string()),
+        needsFactCheck: v.boolean(),
+        contentType: v.string(),
+      })
+    ),
+
+    // Fact-check results
+    factCheck: v.optional(
+      v.object({
+        totalClaims: v.number(),
+        checkedClaims: v.number(),
+        results: v.array(
+          v.object({
+            claim: v.string(),
+            status: v.string(), // "true", "false", "misleading", "unverifiable", "requires_verification", "error"
+            confidence: v.number(),
+            analysis: v.optional(v.string()),
+            sources: v.array(v.string()),
+            error: v.optional(v.string()),
+          })
+        ),
+        summary: v.object({
+          verifiedTrue: v.number(),
+          verifiedFalse: v.number(),
+          misleading: v.number(),
+          unverifiable: v.number(),
+          needsVerification: v.number(),
+        }),
+      })
+    ),
+
+    // Analysis flags
+    requiresFactCheck: v.boolean(),
+
     createdAt: v.number(),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_requires_fact_check", ["requiresFactCheck"]),
 });
 
 export default schema;
