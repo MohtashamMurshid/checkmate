@@ -138,6 +138,224 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
         }}
       />
       
+      {/* Animated Misinformation Spread Background */}
+      <div className="absolute inset-0 -z-5 pointer-events-none">
+        {/* TikTok Video Icons */}
+        <div className="absolute top-12 left-8 w-8 h-8 bg-black rounded-lg opacity-10 animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TT</div>
+        </div>
+        <div className="absolute top-32 right-32 w-8 h-8 bg-black rounded-lg opacity-10 animate-bounce" style={{ animationDelay: '1s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TT</div>
+        </div>
+        <div className="absolute bottom-24 left-12 w-8 h-8 bg-black rounded-lg opacity-10 animate-bounce" style={{ animationDelay: '2s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TT</div>
+        </div>
+        <div className="absolute top-64 left-64 w-8 h-8 bg-black rounded-lg opacity-10 animate-bounce" style={{ animationDelay: '3s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TT</div>
+        </div>
+
+        {/* Facebook Icons */}
+        <div className="absolute top-24 right-20 w-8 h-8 bg-blue-600 rounded-full opacity-10 animate-pulse" style={{ animationDelay: '0.5s', animationDuration: '2s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">f</div>
+        </div>
+        <div className="absolute bottom-16 right-40 w-8 h-8 bg-blue-600 rounded-full opacity-10 animate-pulse" style={{ animationDelay: '1.5s', animationDuration: '2s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">f</div>
+        </div>
+        <div className="absolute top-48 left-80 w-8 h-8 bg-blue-600 rounded-full opacity-10 animate-pulse" style={{ animationDelay: '2.5s', animationDuration: '2s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">f</div>
+        </div>
+
+        {/* WhatsApp Icons */}
+        <div className="absolute top-8 left-24 w-8 h-8 bg-green-500 rounded-full opacity-10 animate-ping" style={{ animationDelay: '0s', animationDuration: '4s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">W</div>
+        </div>
+        <div className="absolute bottom-32 left-32 w-8 h-8 bg-green-500 rounded-full opacity-10 animate-ping" style={{ animationDelay: '2s', animationDuration: '4s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">W</div>
+        </div>
+        <div className="absolute top-56 right-80 w-8 h-8 bg-green-500 rounded-full opacity-10 animate-ping" style={{ animationDelay: '1s', animationDuration: '4s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">W</div>
+        </div>
+
+        {/* Instagram Icons */}
+        <div className="absolute top-20 left-48 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl opacity-10 animate-pulse" style={{ animationDelay: '1s', animationDuration: '2.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">IG</div>
+        </div>
+        <div className="absolute bottom-20 right-16 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl opacity-10 animate-pulse" style={{ animationDelay: '0s', animationDuration: '2.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">IG</div>
+        </div>
+        <div className="absolute top-40 right-80 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl opacity-10 animate-pulse" style={{ animationDelay: '3s', animationDuration: '2.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">IG</div>
+        </div>
+
+        {/* YouTube Icons */}
+        <div className="absolute top-36 left-16 w-8 h-8 bg-red-600 rounded opacity-10 animate-bounce" style={{ animationDelay: '1.5s', animationDuration: '3.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">YT</div>
+        </div>
+        <div className="absolute bottom-28 right-64 w-8 h-8 bg-red-600 rounded opacity-10 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '3.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">YT</div>
+        </div>
+        <div className="absolute top-72 left-56 w-8 h-8 bg-red-600 rounded opacity-10 animate-bounce" style={{ animationDelay: '2.5s', animationDuration: '3.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">YT</div>
+        </div>
+
+        {/* Twitter/X Icons */}
+        <div className="absolute top-44 left-4 w-8 h-8 bg-black rounded-full opacity-10 animate-ping" style={{ animationDelay: '0.5s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">X</div>
+        </div>
+        <div className="absolute bottom-12 left-56 w-8 h-8 bg-black rounded-full opacity-10 animate-ping" style={{ animationDelay: '2s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">X</div>
+        </div>
+        <div className="absolute top-16 right-48 w-8 h-8 bg-black rounded-full opacity-10 animate-ping" style={{ animationDelay: '1.5s', animationDuration: '3s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">X</div>
+        </div>
+
+        {/* LinkedIn Icons */}
+        <div className="absolute top-60 left-20 w-8 h-8 bg-blue-700 rounded-sm opacity-10 animate-pulse" style={{ animationDelay: '1s', animationDuration: '2.8s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">Li</div>
+        </div>
+        <div className="absolute bottom-8 right-24 w-8 h-8 bg-blue-700 rounded-sm opacity-10 animate-pulse" style={{ animationDelay: '0s', animationDuration: '2.8s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">Li</div>
+        </div>
+
+        {/* Snapchat Icons */}
+        <div className="absolute top-28 left-72 w-8 h-8 bg-yellow-400 rounded-full opacity-10 animate-bounce" style={{ animationDelay: '2s', animationDuration: '4s' }}>
+          <div className="w-full h-full flex items-center justify-center text-black text-xs font-bold">SC</div>
+        </div>
+        <div className="absolute bottom-44 right-8 w-8 h-8 bg-yellow-400 rounded-full opacity-10 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '4s' }}>
+          <div className="w-full h-full flex items-center justify-center text-black text-xs font-bold">SC</div>
+        </div>
+
+        {/* Telegram Icons */}
+        <div className="absolute top-52 right-28 w-8 h-8 bg-blue-500 rounded-full opacity-10 animate-ping" style={{ animationDelay: '1.5s', animationDuration: '3.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TG</div>
+        </div>
+        <div className="absolute bottom-36 left-8 w-8 h-8 bg-blue-500 rounded-full opacity-10 animate-ping" style={{ animationDelay: '3s', animationDuration: '3.5s' }}>
+          <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">TG</div>
+        </div>
+
+        {/* Misinformation Spread Lines */}
+        <svg className="absolute inset-0 w-full h-full opacity-10" style={{ zIndex: -1 }}>
+          <defs>
+            <linearGradient id="misinfoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#f97316" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#eab308" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          
+          {/* Animated spreading lines */}
+          <path 
+            d="M 50 100 Q 150 80 250 120 T 450 100" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '3s' }}
+          />
+          <path 
+            d="M 100 300 Q 200 250 300 280 T 500 260" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '4s', animationDelay: '1s' }}
+          />
+          <path 
+            d="M 40 200 Q 120 160 200 180 T 380 160" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '5s', animationDelay: '2s' }}
+          />
+          <path 
+            d="M 200 80 Q 300 120 400 100 T 600 120" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}
+          />
+          <path 
+            d="M 80 350 Q 180 320 280 340 T 480 320" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '4.5s', animationDelay: '1.5s' }}
+          />
+          <path 
+            d="M 160 60 Q 240 90 320 70 T 520 90" 
+            stroke="url(#misinfoGradient)" 
+            strokeWidth="2" 
+            fill="none"
+            className="animate-pulse"
+            style={{ animationDuration: '6s', animationDelay: '2.5s' }}
+          />
+        </svg>
+
+        {/* Floating Warning Signs */}
+        <div className="absolute top-18 right-56 text-red-500 opacity-30 animate-bounce" style={{ animationDelay: '1s', animationDuration: '2.5s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">!</span>
+          </div>
+        </div>
+        <div className="absolute bottom-20 left-16 text-yellow-500 opacity-30 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '3.5s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">?</span>
+          </div>
+        </div>
+        <div className="absolute top-40 left-28 text-orange-500 opacity-30 animate-bounce" style={{ animationDelay: '2s', animationDuration: '3s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">!</span>
+          </div>
+        </div>
+        <div className="absolute top-68 right-36 text-red-400 opacity-30 animate-bounce" style={{ animationDelay: '1.5s', animationDuration: '2.8s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">!</span>
+          </div>
+        </div>
+        <div className="absolute bottom-52 right-72 text-yellow-400 opacity-30 animate-bounce" style={{ animationDelay: '3s', animationDuration: '3.2s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">?</span>
+          </div>
+        </div>
+        <div className="absolute top-32 left-60 text-orange-400 opacity-30 animate-bounce" style={{ animationDelay: '0.8s', animationDuration: '2.7s' }}>
+          <div className="w-6 h-6 border-2 border-current rounded-full flex items-center justify-center">
+            <span className="text-xs font-bold">!</span>
+          </div>
+        </div>
+
+        {/* Floating Text Snippets */}
+        <div className="absolute top-24 left-52 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '1s', animationDuration: '4s' }}>
+          "Breaking News..."
+        </div>
+        <div className="absolute bottom-28 right-44 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '2.5s', animationDuration: '3s' }}>
+          "You won't believe..."
+        </div>
+        <div className="absolute top-44 right-68 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '0.5s', animationDuration: '5s' }}>
+          "Scientists hate this..."
+        </div>
+        <div className="absolute top-12 right-72 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '2s', animationDuration: '3.5s' }}>
+          "Doctors shocked..."
+        </div>
+        <div className="absolute bottom-16 left-44 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '1.5s', animationDuration: '4.5s' }}>
+          "This will change everything..."
+        </div>
+        <div className="absolute top-56 left-8 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '3s', animationDuration: '3.8s' }}>
+          "Exclusive footage..."
+        </div>
+        <div className="absolute bottom-40 right-32 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '0.8s', animationDuration: '4.2s' }}>
+          "Government doesn't want..."
+        </div>
+        <div className="absolute top-20 left-76 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '2.8s', animationDuration: '3.3s' }}>
+          "Leaked documents..."
+        </div>
+        <div className="absolute bottom-60 left-60 text-xs text-muted-foreground/40 animate-pulse" style={{ animationDelay: '1.2s', animationDuration: '4.8s' }}>
+          "Viral video reveals..."
+        </div>
+      </div>
+      
       <div className="text-center relative z-10">
         {/* Badge */}
         <div 

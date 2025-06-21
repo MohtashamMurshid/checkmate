@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useState } from "react";
 import { Database, Plus } from "lucide-react";
+import { Header } from "@/components/header";
 
 export default function NewsPage() {
   const saveTikTokAnalysis = useSaveTikTokAnalysis();
@@ -216,8 +217,12 @@ export default function NewsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header with Mock Data Button */}
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <Header />
+      
+      <div className="pt-16">
+        <div className="space-y-6 max-w-5xl mx-auto px-4 md:px-6">
+          {/* Header with Mock Data Button */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">News Analysis Dashboard</h1>
@@ -255,8 +260,10 @@ export default function NewsPage() {
         </Card>
       </div>
 
-      {/* Saved Analyses Component */}
-      <SavedAnalyses />
+          {/* Saved Analyses Component */}
+          <SavedAnalyses />
+        </div>
+      </div>
     </div>
   );
 }
