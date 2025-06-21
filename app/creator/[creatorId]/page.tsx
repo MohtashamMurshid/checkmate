@@ -17,6 +17,7 @@ import {
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
+import { useLanguage } from "@/components/language-provider";
 
 type Creator = {
   _id: string;
@@ -30,6 +31,8 @@ type Creator = {
 
 // Creator Summary Component
 const CreatorSummary = ({ creator }: { creator: Creator }) => {
+  const { t } = useLanguage();
+
   if (!creator) return null;
 
   const getCredibilityColor = (rating: number) => {
@@ -39,9 +42,9 @@ const CreatorSummary = ({ creator }: { creator: Creator }) => {
   };
 
   const getCredibilityLabel = (rating: number) => {
-    if (rating >= 7) return "Highly Credible";
-    if (rating >= 4) return "Moderately Credible";
-    return "Low Credibility";
+    if (rating >= 7) return t.highlyCredible;
+    if (rating >= 4) return t.moderatelyCredible;
+    return t.lowCredibility;
   };
 
   return (
@@ -60,7 +63,7 @@ const CreatorSummary = ({ creator }: { creator: Creator }) => {
               {creator.creatorName || creator.creatorId}
             </h1>
             <p className="text-sm text-muted-foreground capitalize">
-              {creator.platform} Creator
+              {creator.platform} {t.creator}
             </p>
           </div>
         </CardTitle>
@@ -70,7 +73,7 @@ const CreatorSummary = ({ creator }: { creator: Creator }) => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              <span className="text-sm font-medium">Credibility Rating</span>
+              <span className="text-sm font-medium">{t.credibilityRating}</span>
             </div>
             <Badge
               variant="secondary"
@@ -84,16 +87,18 @@ const CreatorSummary = ({ creator }: { creator: Creator }) => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              <span className="text-sm font-medium">Total Analyses</span>
+              <span className="text-sm font-medium">{t.totalAnalyses}</span>
             </div>
-            <Badge variant="outline">{creator.totalAnalyses} analyses</Badge>
+            <Badge variant="outline">
+              {creator.totalAnalyses} {t.analyses}
+            </Badge>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="text-sm font-medium">Last Analyzed</span>
+            <span className="text-sm font-medium">{t.lastAnalyzed}</span>
           </div>
           <p className="text-sm text-muted-foreground">
             {new Date(creator.lastAnalyzedAt).toLocaleDateString()}
@@ -112,6 +117,7 @@ const CreatorAnalyses = ({
   creatorId: string;
   platform: string;
 }) => {
+  const { t } = useLanguage();
   const analyses = useQuery(api.tiktokAnalyses.getAnalysesByCreator, {
     creatorId,
     platform,
@@ -136,7 +142,7 @@ const CreatorAnalyses = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
-          Content Analyses ({analyses?.length || 0})
+          {t.contentAnalyses} ({analyses?.length || 0})
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -151,7 +157,7 @@ const CreatorAnalyses = ({
           </div>
         ) : analyses.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No analyses found for this creator yet.
+            {t.noAnalysesFound}
           </p>
         ) : (
           <div className="space-y-4 max-w-full">
@@ -163,7 +169,7 @@ const CreatorAnalyses = ({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">
-                      {analysis.metadata?.title || "Untitled Video"}
+                      {analysis.metadata?.title || t.untitledVideo}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       {new Date(analysis.createdAt).toLocaleDateString()}
@@ -188,11 +194,12 @@ const CreatorAnalyses = ({
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                     <span className="whitespace-nowrap">
-                      Confidence: {analysis.factCheck?.confidence || 0}%
+                      {t.confidence}: {analysis.factCheck?.confidence || 0}%
                     </span>
                     {analysis.creatorCredibilityRating && (
                       <span className="whitespace-nowrap">
-                        • Rating: {analysis.creatorCredibilityRating.toFixed(1)}
+                        • {t.rating}:{" "}
+                        {analysis.creatorCredibilityRating.toFixed(1)}
                         /10
                       </span>
                     )}
@@ -204,7 +211,7 @@ const CreatorAnalyses = ({
                     onClick={() => window.open(analysis.videoUrl, "_blank")}
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
-                    View
+                    {t.view}
                   </Button>
                 </div>
               </div>
@@ -224,6 +231,7 @@ const CreatorComments = ({
   creatorId: string;
   platform: string;
 }) => {
+  const { t } = useLanguage();
   const [newComment, setNewComment] = useState("");
 
   const comments = useQuery(api.tiktokAnalyses.getCreatorComments, {
@@ -254,14 +262,14 @@ const CreatorComments = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
-          Community Comments
+          {t.communityComments}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Comment submission */}
         <div className="space-y-2">
           <Textarea
-            placeholder="Share your thoughts about this creator..."
+            placeholder={t.shareThoughts}
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             className="min-h-[100px]"
@@ -272,7 +280,7 @@ const CreatorComments = ({
             className="w-full"
           >
             <Send className="h-4 w-4 mr-2" />
-            Post Comment
+            {t.postComment}
           </Button>
         </div>
 
@@ -292,14 +300,14 @@ const CreatorComments = ({
             </div>
           ) : comments.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
-              No comments yet. Be the first to share your thoughts!
+              {t.noCommentsYet}
             </p>
           ) : (
             comments.map((comment) => {
               const displayName =
                 comment.user?.firstName ||
                 comment.user?.username ||
-                "Anonymous";
+                t.anonymous;
               return (
                 <div
                   key={comment._id}
@@ -334,6 +342,7 @@ const CreatorComments = ({
 };
 
 export default function CreatorDetailsPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const searchParams = useSearchParams();
 
@@ -368,10 +377,10 @@ export default function CreatorDetailsPage() {
         <Card>
           <CardContent className="text-center py-12">
             <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Creator Not Found</h1>
+            <h1 className="text-2xl font-bold mb-2">{t.creatorNotFound}</h1>
             <p className="text-muted-foreground">
-              The content creator &ldquo;{creatorId}&rdquo; on {platform} could
-              not be found.
+              The content {t.creator.toLowerCase()} &ldquo;{creatorId}&rdquo; on{" "}
+              {platform} {t.creatorNotFoundMessage}
             </p>
           </CardContent>
         </Card>

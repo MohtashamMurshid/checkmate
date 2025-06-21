@@ -15,60 +15,66 @@ export function HowItWorks() {
   const steps = [
     {
       step: 1,
-      title: t.inputTikTokLink,
-      description: t.inputTikTokLinkDesc,
+      title: "Paste TikTok or Twitter/X Link",
+      description:
+        "Paste any public TikTok or Twitter/X video URL into our secure analyzer.",
       icon: LinkIcon,
       features: [
+        "Works with TikTok & Twitter/X",
         "Secure URL processing",
-        "Works with any public TikTok video",
         "No account required",
       ],
       isReversed: false,
     },
     {
       step: 2,
-      title: t.audioTranscription,
-      description: t.audioTranscriptionDesc,
+      title: "AI Transcription & Extraction",
+      description:
+        "AI extracts text from posts and transcribes video/audio using OpenAI Whisper.",
       icon: AudioWaveformIcon,
       features: [
-        "OpenAI Whisper technology",
-        "Multiple language support",
-        "High accuracy transcription",
+        "OpenAI Whisper for video/audio",
+        "Extracts post and video text",
+        "Multi-language support",
       ],
       isReversed: true,
     },
     {
       step: 3,
-      title: t.newsDetection2,
-      description: t.newsDetectionDesc,
+      title: "News & Claim Detection",
+      description:
+        "Detects news, opinions, and factual claims in the content for both platforms.",
       icon: SearchIcon,
       features: [
-        "BERT-based classification",
+        "AI-powered claim extraction",
         "News vs. opinion detection",
-        "Claim extraction",
+        "Works for TikTok & Twitter/X",
       ],
       isReversed: false,
     },
     {
       step: 4,
-      title: t.researchFactCheck,
-      description: t.researchFactCheckDesc,
+      title: "Fact-Checking & Source Analysis",
+      description:
+        "Verifies claims using web search, databases, and evaluates source credibility.",
       icon: ShieldCheckIcon,
       features: [
-        "Web search verification",
-        "Fact-checking database lookup",
-        "Source credibility analysis",
+        "Web & database verification",
+        "Checks claim credibility",
+        "Source reliability analysis",
       ],
       isReversed: true,
     },
     {
       step: 5,
-      title: t.credibilityReport,
-      description: t.credibilityReportDesc,
+      title: "Credibility & Creator Report",
+      description:
+        "Get a detailed report with verdicts, sources, and creator credibility rating.",
       icon: FileTextIcon,
       features: [
-        "Truth/misleading/unverifiable labels",
+        "Truth/misleading/unverifiable verdicts",
         "Linked credible sources",
+        "Creator credibility rating",
         "Easy-to-read summary",
       ],
       isReversed: false,

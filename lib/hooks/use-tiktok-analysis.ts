@@ -93,27 +93,34 @@ export function useTikTokAnalysis() {
     setResult(null);
 
     try {
-      // Validate social media URL format (TikTok or Twitter)
+      // Validate URL format (TikTok, Twitter, or general web URL)
       const tiktokUrlPattern =
         /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
       const twitterUrlPattern =
         /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
 
-      if (!tiktokUrlPattern.test(url) && !twitterUrlPattern.test(url)) {
-        throw new Error(
-          "Invalid social media URL format. Please provide a TikTok or Twitter/X URL."
-        );
+      // Basic URL validation for any other web content
+      try {
+        new URL(url);
+      } catch {
+        throw new Error("Invalid URL format. Please provide a valid URL.");
       }
 
       // Determine platform and set appropriate body parameter
       const isTikTok = tiktokUrlPattern.test(url);
       const isTwitter = twitterUrlPattern.test(url);
 
-      const requestBody: { tiktokUrl?: string; twitterUrl?: string } = {};
+      const requestBody: {
+        tiktokUrl?: string;
+        twitterUrl?: string;
+        webUrl?: string;
+      } = {};
       if (isTikTok) {
         requestBody.tiktokUrl = url;
       } else if (isTwitter) {
         requestBody.twitterUrl = url;
+      } else {
+        requestBody.webUrl = url;
       }
 
       // Call the transcribe API route
@@ -129,7 +136,7 @@ export function useTikTokAnalysis() {
         const errorData = await response.json();
         throw new Error(
           errorData.error ||
-            `Failed to analyze ${isTikTok ? "TikTok" : "Twitter"} content`
+            `Failed to analyze ${isTikTok ? "TikTok" : isTwitter ? "Twitter" : "web"} content`
         );
       }
 
