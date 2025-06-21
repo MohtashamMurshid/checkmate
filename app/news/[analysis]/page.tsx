@@ -27,125 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-
-// Component to render markdown-like analysis content in a structured way
-function AnalysisRenderer({ content }: { content: string }) {
-  const renderContent = (text: string) => {
-    const sections = text.split(/\*\*([^*]+):\*\*/);
-    const result = [];
-
-    for (let i = 0; i < sections.length; i++) {
-      if (i === 0 && sections[i].trim()) {
-        // First section (before any headers)
-        result.push(
-          <div key={i} className="prose prose-sm max-w-none">
-            {renderText(sections[i].trim())}
-          </div>
-        );
-      } else if (i % 2 === 1) {
-        // Header
-        const header = sections[i];
-        const content = sections[i + 1] || "";
-
-        result.push(
-          <div key={i} className="mb-4">
-            <h4 className="font-semibold text-base mb-3 text-primary">
-              {header}
-            </h4>
-            <div className="pl-3 border-l-2 border-gray-200">
-              {renderSectionContent(content)}
-            </div>
-          </div>
-        );
-        i++; // Skip the content part as we've processed it
-      }
-    }
-
-    return result;
-  };
-
-  const renderSectionContent = (content: string) => {
-    const lines = content.split("\n").filter((line) => line.trim());
-    const elements = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (line.startsWith("- **") && line.includes(":**")) {
-        // Sub-header with content
-        const match = line.match(/- \*\*([^*]+):\*\*(.*)/);
-        if (match) {
-          elements.push(
-            <div key={i} className="mb-3">
-              <h5 className="font-medium text-sm mb-1 text-gray-800">
-                {match[1]}
-              </h5>
-              <div className="pl-3">{renderText(match[2])}</div>
-            </div>
-          );
-        }
-      } else if (line.startsWith("- ")) {
-        // Regular bullet point
-        elements.push(
-          <div key={i} className="flex items-start gap-2 mb-2">
-            <span className="text-primary mt-1 text-xs">•</span>
-            <div className="flex-1 text-sm leading-relaxed">
-              {renderText(line.substring(2))}
-            </div>
-          </div>
-        );
-      } else if (line.trim()) {
-        // Regular paragraph
-        elements.push(
-          <div key={i} className="mb-2 text-sm leading-relaxed">
-            {renderText(line)}
-          </div>
-        );
-      }
-    }
-
-    return elements;
-  };
-
-  const renderText = (text: string) => {
-    // Handle links [text](url)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = linkRegex.exec(text)) !== null) {
-      // Add text before the link
-      if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
-      }
-
-      // Add the link
-      parts.push(
-        <a
-          key={match.index}
-          href={match[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:text-primary/80 underline font-medium"
-        >
-          {match[1]}
-        </a>
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
-    }
-
-    return parts.length > 1 ? parts : text;
-  };
-
-  return <div className="space-y-4">{renderContent(content)}</div>;
-}
+import { AnalysisRenderer } from "@/components/analysis-renderer";
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -175,10 +57,16 @@ const getStatusBadge = (status: string) => {
         <Badge className="bg-yellow-100 text-yellow-800">Misleading</Badge>
       );
     case "unverifiable":
-      return <Badge className="bg-gray-100 text-gray-800">Unverifiable</Badge>;
+      return (
+        <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+          Unverifiable
+        </Badge>
+      );
     default:
       return (
-        <Badge className="bg-blue-100 text-blue-800">Needs Verification</Badge>
+        <Badge className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+          Needs Verification
+        </Badge>
       );
   }
 };
@@ -259,6 +147,13 @@ export default function AnalysisPage({
                 <User className="h-4 w-4" />
                 {analysis.metadata?.creator || "Unknown Creator"}
               </span>
+              {analysis.metadata?.platform && (
+                <Badge variant="secondary" className="text-xs">
+                  {analysis.metadata.platform === "twitter"
+                    ? "Twitter/X"
+                    : "TikTok"}
+                </Badge>
+              )}
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4" />
                 {formatDate(analysis._creationTime)}
@@ -266,6 +161,12 @@ export default function AnalysisPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {analysis.metadata?.description &&
+              analysis.metadata.description !== analysis.metadata.title && (
+                <div className="mb-4 text-sm text-muted-foreground">
+                  <strong>Description:</strong> {analysis.metadata.description}
+                </div>
+              )}
             <a
               href={analysis.videoUrl}
               target="_blank"
@@ -287,9 +188,9 @@ export default function AnalysisPage({
                 Transcription
               </h4>
               <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm leading-relaxed">
-                  &ldquo;{analysis.transcription.text}&rdquo;
-                </p>
+                <div className="text-sm leading-relaxed">
+                  <AnalysisRenderer content={analysis.transcription.text} />
+                </div>
                 {analysis.transcription.language && (
                   <p className="text-xs text-muted-foreground mt-3">
                     Language: {analysis.transcription.language}
@@ -341,94 +242,68 @@ export default function AnalysisPage({
         )}
 
         {/* Fact-Check Results */}
-        {analysis.factCheck && analysis.factCheck.results.length > 0 && (
+        {analysis.factCheck && (
           <div className="space-y-4">
             <h4 className="font-medium flex items-center gap-2 text-lg">
               <ClipboardCheck className="h-5 w-5" />
               Fact-Check Results
             </h4>
 
-            {analysis.factCheck.results.map((result, index) => {
-              const isExpanded = expandedClaims[index] || false;
-              const analysisText = result.analysis || "";
-              const shouldTruncate = analysisText.length > 300;
-
-              return (
-                <Card
-                  key={index}
-                  className={`border-l-4 ${
-                    result.status === "true"
-                      ? "border-l-green-500"
-                      : result.status === "false"
-                        ? "border-l-red-500"
-                        : result.status === "misleading"
-                          ? "border-l-yellow-500"
-                          : "border-l-gray-500"
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <h5 className="font-medium text-base mb-2">
-                            Claim: &ldquo;{result.claim}&rdquo;
-                          </h5>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {getStatusIcon(result.status)}
-                          {getStatusBadge(result.status)}
-                        </div>
-                      </div>
-
-                      {analysisText && (
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="font-medium mb-3 text-base">
-                            Analysis:
-                          </p>
-                          <div>
+            {/* New format with verdict, explanation, etc. */}
+            {analysis.factCheck.verdict && (
+              <Card
+                className={`border-l-4 ${
+                  analysis.factCheck.verdict === "true"
+                    ? "border-l-green-500"
+                    : analysis.factCheck.verdict === "false"
+                      ? "border-l-red-500"
+                      : analysis.factCheck.verdict === "misleading"
+                        ? "border-l-yellow-500"
+                        : "border-l-gray-500"
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h5 className="font-medium text-base mb-2">
+                          Overall Verification Status
+                        </h5>
+                        {analysis.factCheck.content && (
+                          <div className="text-sm text-muted-foreground mb-2">
                             <AnalysisRenderer
-                              content={
-                                shouldTruncate && !isExpanded
-                                  ? analysisText.substring(0, 300) + "..."
-                                  : analysisText
-                              }
+                              content={analysis.factCheck.content}
                             />
                           </div>
-                          {shouldTruncate && (
-                            <button
-                              onClick={() =>
-                                setExpandedClaims((prev) => ({
-                                  ...prev,
-                                  [index]: !isExpanded,
-                                }))
-                              }
-                              className="mt-4 text-primary hover:text-primary/80 font-medium transition-colors text-sm flex items-center gap-1"
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUpIcon className="h-4 w-4" />
-                                  Show less
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDownIcon className="h-4 w-4" />
-                                  Show more
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {getStatusIcon(analysis.factCheck.verdict)}
+                        {getStatusBadge(analysis.factCheck.verdict)}
+                      </div>
+                    </div>
 
-                      {result.sources && result.sources.length > 0 && (
+                    {analysis.factCheck.explanation && (
+                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                        <p className="font-medium mb-3 text-base">Analysis:</p>
+                        <div>
+                          <AnalysisRenderer
+                            content={analysis.factCheck.explanation}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {analysis.factCheck.sources &&
+                      analysis.factCheck.sources.length > 0 && (
                         <div>
                           <p className="text-xs font-medium mb-2">
-                            Sources ({result.sources.length} found):
+                            Sources ({analysis.factCheck.sources.length} found):
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {result.sources
+                            {analysis.factCheck.sources
                               .slice(0, 5)
-                              .map((sourceUrl, sourceIndex) => (
+                              .map((source, sourceIndex) => (
                                 <Button
                                   key={sourceIndex}
                                   size="sm"
@@ -436,12 +311,13 @@ export default function AnalysisPage({
                                   asChild
                                 >
                                   <a
-                                    href={sourceUrl}
+                                    href={source.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs"
                                   >
-                                    {new URL(sourceUrl).hostname}
+                                    {source.source ||
+                                      new URL(source.url).hostname}
                                     <ExternalLink className="h-3 w-3 ml-1" />
                                   </a>
                                 </Button>
@@ -450,16 +326,142 @@ export default function AnalysisPage({
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      {analysis.factCheck.confidence && (
                         <span>
-                          Confidence: {Math.round(result.confidence * 100)}%
+                          Confidence: {analysis.factCheck.confidence}%
                         </span>
-                      </div>
+                      )}
+                      {analysis.factCheck.isVerified !== undefined && (
+                        <span>
+                          Verified:{" "}
+                          {analysis.factCheck.isVerified ? "Yes" : "No"}
+                        </span>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Legacy format with results array */}
+            {analysis.factCheck.results &&
+              analysis.factCheck.results.length > 0 &&
+              analysis.factCheck.results.map((result, index) => {
+                const isExpanded = expandedClaims[index] || false;
+                const analysisText = result.analysis || "";
+                const shouldTruncate = analysisText.length > 300;
+
+                return (
+                  <Card
+                    key={index}
+                    className={`border-l-4 ${
+                      result.status === "true"
+                        ? "border-l-green-500"
+                        : result.status === "false"
+                          ? "border-l-red-500"
+                          : result.status === "misleading"
+                            ? "border-l-yellow-500"
+                            : "border-l-gray-500"
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-base mb-2">
+                              Claim:
+                            </h5>
+                            <div className="text-sm text-muted-foreground mb-2">
+                              <AnalysisRenderer content={result.claim} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {getStatusIcon(result.status)}
+                            {getStatusBadge(result.status)}
+                          </div>
+                        </div>
+
+                        {analysisText && (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <p className="font-medium mb-3 text-base">
+                              Analysis:
+                            </p>
+                            <div>
+                              <AnalysisRenderer
+                                content={
+                                  shouldTruncate && !isExpanded
+                                    ? analysisText.substring(0, 300) + "..."
+                                    : analysisText
+                                }
+                              />
+                            </div>
+                            {shouldTruncate && (
+                              <button
+                                onClick={() =>
+                                  setExpandedClaims((prev) => ({
+                                    ...prev,
+                                    [index]: !isExpanded,
+                                  }))
+                                }
+                                className="mt-4 text-primary hover:text-primary/80 font-medium transition-colors text-sm flex items-center gap-1"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUpIcon className="h-4 w-4" />
+                                    Show less
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDownIcon className="h-4 w-4" />
+                                    Show more
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {result.sources && result.sources.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium mb-2">
+                              Sources ({result.sources.length} found):
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {result.sources
+                                .slice(0, 5)
+                                .map((sourceUrl, sourceIndex) => (
+                                  <Button
+                                    key={sourceIndex}
+                                    size="sm"
+                                    variant="outline"
+                                    asChild
+                                  >
+                                    <a
+                                      href={sourceUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs"
+                                    >
+                                      {new URL(sourceUrl).hostname}
+                                      <ExternalLink className="h-3 w-3 ml-1" />
+                                    </a>
+                                  </Button>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            Confidence: {Math.round(result.confidence * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
           </div>
         )}
       </div>

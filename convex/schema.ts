@@ -52,28 +52,49 @@ const schema = defineSchema({
       })
     ),
 
-    // Fact-check results
+    // Fact-check results - Updated to match route.ts FactCheckData interface
     factCheck: v.optional(
       v.object({
-        totalClaims: v.number(),
-        checkedClaims: v.number(),
-        results: v.array(
+        verdict: v.optional(v.string()), // "true", "false", "misleading", "unverifiable"
+        confidence: v.optional(v.number()), // Percentage (0-100)
+        explanation: v.optional(v.string()), // Analysis explanation
+        content: v.optional(v.string()), // Content summary
+        isVerified: v.optional(v.boolean()), // Whether verification was successful
+        sources: v.optional(
+          v.array(
+            v.object({
+              title: v.string(),
+              url: v.string(),
+              source: v.optional(v.string()),
+              relevance: v.optional(v.number()),
+            })
+          )
+        ),
+        error: v.optional(v.string()),
+        // Legacy fields for backward compatibility
+        totalClaims: v.optional(v.number()),
+        checkedClaims: v.optional(v.number()),
+        results: v.optional(
+          v.array(
+            v.object({
+              claim: v.string(),
+              status: v.string(),
+              confidence: v.number(),
+              analysis: v.optional(v.string()),
+              sources: v.array(v.string()),
+              error: v.optional(v.string()),
+            })
+          )
+        ),
+        summary: v.optional(
           v.object({
-            claim: v.string(),
-            status: v.string(), // "true", "false", "misleading", "unverifiable", "requires_verification", "error"
-            confidence: v.number(),
-            analysis: v.optional(v.string()),
-            sources: v.array(v.string()),
-            error: v.optional(v.string()),
+            verifiedTrue: v.number(),
+            verifiedFalse: v.number(),
+            misleading: v.number(),
+            unverifiable: v.number(),
+            needsVerification: v.number(),
           })
         ),
-        summary: v.object({
-          verifiedTrue: v.number(),
-          verifiedFalse: v.number(),
-          misleading: v.number(),
-          unverifiable: v.number(),
-          needsVerification: v.number(),
-        }),
       })
     ),
 
@@ -84,7 +105,8 @@ const schema = defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_created_at", ["createdAt"])
-    .index("by_requires_fact_check", ["requiresFactCheck"]),
+    .index("by_requires_fact_check", ["requiresFactCheck"])
+    .index("by_user_and_platform", ["userId", "metadata.platform"]),
 });
 
 export default schema;

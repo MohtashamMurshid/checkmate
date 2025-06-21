@@ -57,6 +57,7 @@ interface TikTokAnalysisData {
     description: string;
     creator: string;
     originalUrl: string;
+    platform?: string;
   };
   newsDetection: NewsDetection | null;
   factCheck: FactCheckData | null;

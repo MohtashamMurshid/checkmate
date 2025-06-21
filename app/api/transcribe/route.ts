@@ -5,7 +5,7 @@ import { Scraper } from "@the-convocation/twitter-scraper";
 import { researchAndFactCheck } from "../../../tools/fact-checking";
 
 // Define interfaces for proper typing
-interface FactCheckData {
+export interface FactCheckData {
   overallStatus: string;
   confidence: number;
   isVerified: boolean;

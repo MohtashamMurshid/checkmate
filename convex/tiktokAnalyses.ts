@@ -34,25 +34,46 @@ export const saveTikTokAnalysis = mutation({
     ),
     factCheck: v.optional(
       v.object({
-        totalClaims: v.number(),
-        checkedClaims: v.number(),
-        results: v.array(
+        verdict: v.optional(v.string()), // "true", "false", "misleading", "unverifiable"
+        confidence: v.optional(v.number()), // Percentage (0-100)
+        explanation: v.optional(v.string()), // Analysis explanation
+        content: v.optional(v.string()), // Content summary
+        isVerified: v.optional(v.boolean()), // Whether verification was successful
+        sources: v.optional(
+          v.array(
+            v.object({
+              title: v.string(),
+              url: v.string(),
+              source: v.optional(v.string()),
+              relevance: v.optional(v.number()),
+            })
+          )
+        ),
+        error: v.optional(v.string()),
+        // Legacy fields for backward compatibility
+        totalClaims: v.optional(v.number()),
+        checkedClaims: v.optional(v.number()),
+        results: v.optional(
+          v.array(
+            v.object({
+              claim: v.string(),
+              status: v.string(),
+              confidence: v.number(),
+              analysis: v.optional(v.string()),
+              sources: v.array(v.string()),
+              error: v.optional(v.string()),
+            })
+          )
+        ),
+        summary: v.optional(
           v.object({
-            claim: v.string(),
-            status: v.string(),
-            confidence: v.number(),
-            analysis: v.optional(v.string()),
-            sources: v.array(v.string()),
-            error: v.optional(v.string()),
+            verifiedTrue: v.number(),
+            verifiedFalse: v.number(),
+            misleading: v.number(),
+            unverifiable: v.number(),
+            needsVerification: v.number(),
           })
         ),
-        summary: v.object({
-          verifiedTrue: v.number(),
-          verifiedFalse: v.number(),
-          misleading: v.number(),
-          unverifiable: v.number(),
-          needsVerification: v.number(),
-        }),
       })
     ),
     requiresFactCheck: v.boolean(),
@@ -114,6 +135,15 @@ export const getUserTikTokAnalyses = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
+  },
+});
+
+// Get all TikTok analyses for all users
+export const getAllAnalyses = query({
+  args: {},
+  async handler(ctx) {
+    // Get all analyses, ordered by creation date (newest first)
+    return await ctx.db.query("tiktokAnalyses").order("desc").collect();
   },
 });
 
@@ -211,6 +241,69 @@ export const deleteTikTokAnalysis = mutation({
     // Delete the analysis
     await ctx.db.delete(args.analysisId);
     return { success: true };
+  },
+});
+
+// Get analysis statistics for all users
+export const getAllAnalysisStats = query({
+  args: {},
+  async handler(ctx) {
+    const allAnalyses = await ctx.db.query("tiktokAnalyses").collect();
+
+    if (allAnalyses.length === 0) {
+      return {
+        totalAnalyses: 0,
+        requiresFactCheck: 0,
+        hasNewsContent: 0,
+        factCheckSummary: {
+          verifiedTrue: 0,
+          verifiedFalse: 0,
+          misleading: 0,
+          unverifiable: 0,
+          needsVerification: 0,
+        },
+      };
+    }
+
+    const stats = allAnalyses.reduce(
+      (acc, analysis) => {
+        if (analysis.requiresFactCheck) {
+          acc.requiresFactCheck++;
+        }
+        if (analysis.newsDetection?.hasNewsContent) {
+          acc.hasNewsContent++;
+        }
+        if (analysis.factCheck?.summary) {
+          acc.factCheckSummary.verifiedTrue +=
+            analysis.factCheck.summary.verifiedTrue;
+          acc.factCheckSummary.verifiedFalse +=
+            analysis.factCheck.summary.verifiedFalse;
+          acc.factCheckSummary.misleading +=
+            analysis.factCheck.summary.misleading;
+          acc.factCheckSummary.unverifiable +=
+            analysis.factCheck.summary.unverifiable;
+          acc.factCheckSummary.needsVerification +=
+            analysis.factCheck.summary.needsVerification;
+        }
+        return acc;
+      },
+      {
+        requiresFactCheck: 0,
+        hasNewsContent: 0,
+        factCheckSummary: {
+          verifiedTrue: 0,
+          verifiedFalse: 0,
+          misleading: 0,
+          unverifiable: 0,
+          needsVerification: 0,
+        },
+      }
+    );
+
+    return {
+      totalAnalyses: allAnalyses.length,
+      ...stats,
+    };
   },
 });
 

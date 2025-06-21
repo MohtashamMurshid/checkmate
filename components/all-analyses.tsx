@@ -1,11 +1,9 @@
 "use client";
 
 import {
-  useUserTikTokAnalyses,
-  useDeleteTikTokAnalysis,
-  useUserAnalysisStats,
-} from "../lib/hooks/use-saved-analyses";
-import { Id } from "../convex/_generated/dataModel";
+  useAllAnalyses,
+  useAllAnalysisStats,
+} from "../lib/hooks/use-all-analyses";
 import {
   Card,
   CardContent,
@@ -15,29 +13,12 @@ import {
 } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Trash2, Eye, Calendar, User, Video } from "lucide-react";
-import { useState } from "react";
+import { Eye, Calendar, User, Video } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
 
-export function SavedAnalyses() {
-  const analyses = useUserTikTokAnalyses();
-  const stats = useUserAnalysisStats();
-  const deleteAnalysis = useDeleteTikTokAnalysis();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleDelete = async (analysisId: string) => {
-    setDeletingId(analysisId);
-    try {
-      await deleteAnalysis({ analysisId: analysisId as Id<"tiktokAnalyses"> });
-      toast.success("Analysis deleted successfully.");
-    } catch (error) {
-      console.error("Failed to delete analysis:", error);
-      toast.error("Failed to delete analysis. Please try again.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
+export function AllAnalyses() {
+  const analyses = useAllAnalyses();
+  const stats = useAllAnalysisStats();
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -54,9 +35,7 @@ export function SavedAnalyses() {
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">
-            Loading your saved analyses...
-          </p>
+          <p className="text-muted-foreground">Loading all analyses...</p>
         </div>
       </div>
     );
@@ -116,7 +95,7 @@ export function SavedAnalyses() {
 
       {/* Analyses List */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Your Saved Analyses</h2>
+        <h2 className="text-2xl font-bold">All Saved Analyses</h2>
 
         {analyses.length === 0 ? (
           <Card>
@@ -124,7 +103,7 @@ export function SavedAnalyses() {
               <Video className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No analyses yet</h3>
               <p className="text-muted-foreground">
-                Analyze your first TikTok video to see it saved here.
+                When analyses are created, they will appear here.
               </p>
             </CardContent>
           </Card>
@@ -181,24 +160,25 @@ export function SavedAnalyses() {
                       Fact-Check Summary
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {analysis.factCheck.summary.verifiedTrue > 0 && (
+                      {(analysis.factCheck.summary?.verifiedTrue ?? 0) > 0 && (
                         <Badge className="bg-green-100 text-green-800">
-                          {analysis.factCheck.summary.verifiedTrue} True
+                          {analysis.factCheck.summary?.verifiedTrue} True
                         </Badge>
                       )}
-                      {analysis.factCheck.summary.verifiedFalse > 0 && (
+                      {(analysis.factCheck.summary?.verifiedFalse ?? 0) > 0 && (
                         <Badge className="bg-red-100 text-red-800">
-                          {analysis.factCheck.summary.verifiedFalse} False
+                          {analysis.factCheck.summary?.verifiedFalse} False
                         </Badge>
                       )}
-                      {analysis.factCheck.summary.misleading > 0 && (
+                      {(analysis.factCheck.summary?.misleading ?? 0) > 0 && (
                         <Badge className="bg-yellow-100 text-yellow-800">
-                          {analysis.factCheck.summary.misleading} Misleading
+                          {analysis.factCheck.summary?.misleading} Misleading
                         </Badge>
                       )}
-                      {analysis.factCheck.summary.unverifiable > 0 && (
+                      {(analysis.factCheck.summary?.unverifiable ?? 0) > 0 && (
                         <Badge className="bg-gray-100 text-gray-800">
-                          {analysis.factCheck.summary.unverifiable} Unverifiable
+                          {analysis.factCheck.summary?.unverifiable}{" "}
+                          Unverifiable
                         </Badge>
                       )}
                     </div>
@@ -212,19 +192,6 @@ export function SavedAnalyses() {
                       <Eye className="h-4 w-4 mr-1" />
                       View Details
                     </Link>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(analysis._id)}
-                    disabled={deletingId === analysis._id}
-                  >
-                    {deletingId === analysis._id ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border-b border-white" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
                   </Button>
                 </div>
               </CardContent>

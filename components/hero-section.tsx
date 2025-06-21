@@ -17,9 +17,13 @@ import {
   XCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  BookmarkIcon,
 } from "lucide-react";
 import { useTikTokAnalysis } from "@/lib/hooks/use-tiktok-analysis";
+import { useSaveTikTokAnalysis } from "@/lib/hooks/use-saved-analyses";
+import { useConvexAuth } from "convex/react";
 import { toast } from "sonner";
+import { AnalysisRenderer } from "@/components/analysis-renderer";
 
 interface HeroSectionProps {
   initialUrl?: string;
@@ -40,129 +44,14 @@ interface FactCheckResult {
   error?: string;
 }
 
-// Component to render markdown-like analysis content in a structured way
-function AnalysisRenderer({ content }: { content: string }) {
-  const renderContent = (text: string) => {
-    const sections = text.split(/\*\*([^*]+):\*\*/);
-    const result = [];
-
-    for (let i = 0; i < sections.length; i++) {
-      if (i === 0 && sections[i].trim()) {
-        // First section (before any headers)
-        result.push(
-          <div key={i} className="prose prose-sm max-w-none">
-            {renderText(sections[i].trim())}
-          </div>
-        );
-      } else if (i % 2 === 1) {
-        // Header
-        const header = sections[i];
-        const content = sections[i + 1] || "";
-
-        result.push(
-          <div key={i} className="mb-4">
-            <h4 className="font-semibold text-base mb-3 text-primary">
-              {header}
-            </h4>
-            <div className="pl-3 border-l-2 border-gray-200">
-              {renderSectionContent(content)}
-            </div>
-          </div>
-        );
-        i++; // Skip the content part as we've processed it
-      }
-    }
-
-    return result;
-  };
-
-  const renderSectionContent = (content: string) => {
-    const lines = content.split("\n").filter((line) => line.trim());
-    const elements = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (line.startsWith("- **") && line.includes(":**")) {
-        // Sub-header with content
-        const match = line.match(/- \*\*([^*]+):\*\*(.*)/);
-        if (match) {
-          elements.push(
-            <div key={i} className="mb-3">
-              <h5 className="font-medium text-sm mb-1 text-gray-800">
-                {match[1]}
-              </h5>
-              <div className="pl-3">{renderText(match[2])}</div>
-            </div>
-          );
-        }
-      } else if (line.startsWith("- ")) {
-        // Regular bullet point
-        elements.push(
-          <div key={i} className="flex items-start gap-2 mb-2">
-            <span className="text-primary mt-1 text-xs">•</span>
-            <div className="flex-1 text-sm leading-relaxed">
-              {renderText(line.substring(2))}
-            </div>
-          </div>
-        );
-      } else if (line.trim()) {
-        // Regular paragraph
-        elements.push(
-          <div key={i} className="mb-2 text-sm leading-relaxed">
-            {renderText(line)}
-          </div>
-        );
-      }
-    }
-
-    return elements;
-  };
-
-  const renderText = (text: string) => {
-    // Handle links [text](url)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = linkRegex.exec(text)) !== null) {
-      // Add text before the link
-      if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
-      }
-
-      // Add the link
-      parts.push(
-        <a
-          key={match.index}
-          href={match[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:text-primary/80 underline font-medium"
-        >
-          {match[1]}
-        </a>
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
-    }
-
-    return parts.length > 1 ? parts : text;
-  };
-
-  return <div className="space-y-4">{renderContent(content)}</div>;
-}
-
 export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [url, setUrl] = useState(initialUrl);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
+  const { isAuthenticated } = useConvexAuth();
+  const saveTikTokAnalysis = useSaveTikTokAnalysis();
   const router = useRouter();
 
   useEffect(() => {
@@ -202,7 +91,85 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const handleReset = () => {
     setUrl("");
     setIsAnalysisExpanded(false);
+    setIsSaved(false);
     reset();
+  };
+
+  const handleSaveAnalysis = async () => {
+    if (!result?.success || !result.data || !isAuthenticated) {
+      toast.error("Cannot save analysis - please ensure you're logged in");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Prepare the data for saving, mapping to schema format
+      const saveData = {
+        videoUrl: result.data.metadata.originalUrl,
+        transcription: result.data.transcription
+          ? {
+              text: result.data.transcription.text,
+              language: result.data.transcription.language,
+              // Note: duration not available from API yet, will be undefined
+            }
+          : undefined,
+        metadata: result.data.metadata
+          ? {
+              title: result.data.metadata.title,
+              description: result.data.metadata.description,
+              creator: result.data.metadata.creator,
+              originalUrl: result.data.metadata.originalUrl,
+              platform: result.data.metadata.platform,
+            }
+          : undefined,
+        newsDetection: result.data.newsDetection
+          ? {
+              hasNewsContent: result.data.newsDetection.hasNewsContent,
+              confidence: result.data.newsDetection.confidence,
+              newsKeywordsFound: result.data.newsDetection.newsKeywordsFound,
+              potentialClaims: result.data.newsDetection.potentialClaims,
+              needsFactCheck: result.data.newsDetection.needsFactCheck,
+              contentType: result.data.newsDetection.contentType,
+            }
+          : undefined,
+        factCheck: result.data.factCheck
+          ? {
+              // Map from FactCheckResult to schema format
+              verdict: (result.data.factCheck as unknown as FactCheckResult)
+                .verdict,
+              confidence: (result.data.factCheck as unknown as FactCheckResult)
+                .confidence,
+              explanation: (result.data.factCheck as unknown as FactCheckResult)
+                .explanation,
+              content: (result.data.factCheck as unknown as FactCheckResult)
+                .content,
+              isVerified: (result.data.factCheck as unknown as FactCheckResult)
+                .isVerified,
+              sources: (
+                result.data.factCheck as unknown as FactCheckResult
+              ).sources?.map((source) => ({
+                title: source.title,
+                url: source.url,
+                source: source.source,
+                relevance: source.relevance,
+              })),
+              error: (result.data.factCheck as unknown as FactCheckResult)
+                .error,
+            }
+          : undefined,
+        requiresFactCheck: result.data.requiresFactCheck,
+      };
+
+      await saveTikTokAnalysis(saveData);
+
+      setIsSaved(true);
+      toast.success("Analysis saved successfully!");
+    } catch (error) {
+      console.error("Failed to save analysis:", error);
+      toast.error("Failed to save analysis. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -234,11 +201,13 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
         );
       case "unverifiable":
         return (
-          <Badge className="bg-gray-100 text-gray-800">Unverifiable</Badge>
+          <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+            Unverifiable
+          </Badge>
         );
       default:
         return (
-          <Badge className="bg-blue-100 text-blue-800">
+          <Badge className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
             Needs Verification
           </Badge>
         );
@@ -317,7 +286,17 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                       </h3>
                       <div className="text-sm text-muted-foreground space-y-1">
                         <p>Creator: {result.data.metadata.creator}</p>
+                        <p>
+                          Platform: {result.data.metadata.platform || "Unknown"}
+                        </p>
                         <p>Original URL: {result.data.metadata.originalUrl}</p>
+                        {result.data.metadata.description &&
+                          result.data.metadata.description !==
+                            result.data.metadata.title && (
+                            <p>
+                              Description: {result.data.metadata.description}
+                            </p>
+                          )}
                       </div>
                     </div>
 
@@ -331,9 +310,11 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                             Transcription
                           </h4>
                           <div className="p-4 bg-muted rounded-lg">
-                            <p className="text-sm leading-relaxed">
-                              &ldquo;{result.data.transcription.text}&rdquo;
-                            </p>
+                            <div className="text-sm leading-relaxed">
+                              <AnalysisRenderer
+                                content={result.data.transcription.text}
+                              />
+                            </div>
                             {result.data.transcription.language && (
                               <p className="text-xs text-muted-foreground mt-3">
                                 Language: {result.data.transcription.language}
@@ -342,6 +323,68 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                           </div>
                         </div>
                       )}
+
+                    {/* Platform Analysis */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <AlertCircleIcon className="h-4 w-4" />
+                        Platform Analysis
+                      </h4>
+                      <div className="p-4 bg-muted rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Source Platform:</span>
+                          <Badge variant="secondary">
+                            {result.data.metadata.platform === "twitter"
+                              ? "Twitter/X"
+                              : "TikTok"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Content Type:</span>
+                          <Badge variant="outline">
+                            {result.data.metadata.platform === "twitter"
+                              ? "Social Post"
+                              : "Video Content"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Fact-Check Required:</span>
+                          <Badge
+                            variant={
+                              result.data.requiresFactCheck
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {result.data.requiresFactCheck ? "Yes" : "No"}
+                          </Badge>
+                        </div>
+                        {result.data.factCheck && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">
+                              Verification Status:
+                            </span>
+                            <Badge
+                              variant={
+                                (
+                                  result.data
+                                    .factCheck as unknown as FactCheckResult
+                                ).isVerified
+                                  ? "default"
+                                  : "outline"
+                              }
+                            >
+                              {(
+                                result.data
+                                  .factCheck as unknown as FactCheckResult
+                              ).isVerified
+                                ? "Verified"
+                                : "Pending"}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* News Detection */}
                     {result.data.newsDetection && (
@@ -430,14 +473,16 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                                   <h5 className="font-medium text-sm mb-2">
                                     Overall Verification Status
                                   </h5>
-                                  <p className="text-sm text-muted-foreground">
-                                    {
-                                      (
-                                        result.data
-                                          .factCheck as unknown as FactCheckResult
-                                      ).content
-                                    }
-                                  </p>
+                                  <div className="text-sm text-muted-foreground">
+                                    <AnalysisRenderer
+                                      content={
+                                        (
+                                          result.data
+                                            .factCheck as unknown as FactCheckResult
+                                        ).content
+                                      }
+                                    />
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {getStatusIcon(
@@ -459,7 +504,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                                 result.data
                                   .factCheck as unknown as FactCheckResult
                               ).explanation && (
-                                <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                                   <p className="font-medium mb-3 text-base">
                                     Analysis:
                                   </p>
@@ -593,11 +638,46 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                       </div>
                     )}
 
-                    {/* Reset Button */}
+                    {/* Action Buttons */}
                     <div className="pt-4 border-t">
-                      <Button variant="outline" onClick={handleReset}>
-                        Analyze Another Video
-                      </Button>
+                      <div className="flex gap-3 flex-wrap">
+                        {/* Save Button - Only show for authenticated users */}
+                        {isAuthenticated && (
+                          <Button
+                            onClick={handleSaveAnalysis}
+                            disabled={isSaving || isSaved}
+                            className="flex items-center gap-2"
+                          >
+                            {isSaving ? (
+                              <LoaderIcon className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <BookmarkIcon className="h-4 w-4" />
+                            )}
+                            {isSaved
+                              ? "Saved!"
+                              : isSaving
+                                ? "Saving..."
+                                : "Save Analysis"}
+                          </Button>
+                        )}
+
+                        <Button variant="outline" onClick={handleReset}>
+                          Analyze Another Video
+                        </Button>
+                      </div>
+
+                      {/* Login prompt for non-authenticated users */}
+                      {!isAuthenticated && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          <a
+                            href="/sign-in"
+                            className="text-primary hover:underline"
+                          >
+                            Sign in
+                          </a>{" "}
+                          to save your analysis results
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : (
