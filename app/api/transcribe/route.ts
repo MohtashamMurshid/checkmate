@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { transcribeVideoDirectly } from "../../../tools/index";
+import {
+  transcribeVideoDirectly,
+  scrapeWebContent,
+} from "../../../tools/index";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
 import { Scraper } from "@the-convocation/twitter-scraper";
 import { researchAndFactCheck } from "../../../tools/fact-checking";
@@ -47,39 +50,60 @@ const twitterScraper = new Scraper();
 
 export async function POST(request: NextRequest) {
   try {
-    const { videoUrl, tiktokUrl, twitterUrl } = await request.json();
+    const { videoUrl, tiktokUrl, twitterUrl, webUrl } = await request.json();
 
-    // Validate input - either videoUrl (direct video), tiktokUrl (TikTok URL), or twitterUrl (Twitter URL)
-    if (!videoUrl && !tiktokUrl && !twitterUrl) {
+    // Validate input - accept any URL parameter
+    if (!videoUrl && !tiktokUrl && !twitterUrl && !webUrl) {
       return NextResponse.json(
         {
           success: false,
-          error: "Either videoUrl, tiktokUrl, or twitterUrl is required",
+          error:
+            "A URL is required (videoUrl, tiktokUrl, twitterUrl, or webUrl)",
         },
         { status: 400 }
       );
     }
 
     // Determine the platform and URL to use
-    const actualUrl = twitterUrl || tiktokUrl || videoUrl;
-    const platform = twitterUrl ? "twitter" : "tiktok";
+    const actualUrl = webUrl || twitterUrl || tiktokUrl || videoUrl;
 
-    // Validate URL format based on platform
+    // Detect platform based on URL patterns
+    const tiktokUrlPattern =
+      /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
+    const twitterUrlPattern =
+      /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+
+    let platform: string;
+    if (tiktokUrlPattern.test(actualUrl)) {
+      platform = "tiktok";
+    } else if (twitterUrlPattern.test(actualUrl)) {
+      platform = "twitter";
+    } else {
+      platform = "web";
+    }
+
+    // Validate URL format based on platform (only for specific platforms)
     if (platform === "twitter") {
-      const twitterUrlPattern =
-        /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
       if (!twitterUrlPattern.test(actualUrl)) {
         return NextResponse.json(
           { success: false, error: "Invalid Twitter URL format" },
           { status: 400 }
         );
       }
-    } else {
-      const tiktokUrlPattern =
-        /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
+    } else if (platform === "tiktok") {
       if (!tiktokUrlPattern.test(actualUrl)) {
         return NextResponse.json(
           { success: false, error: "Invalid TikTok URL format" },
+          { status: 400 }
+        );
+      }
+    } else if (platform === "web") {
+      // Basic URL validation for web content
+      try {
+        new URL(actualUrl);
+      } catch {
+        return NextResponse.json(
+          { success: false, error: "Invalid URL format" },
           { status: 400 }
         );
       }
@@ -152,6 +176,46 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    } else if (platform === "web") {
+      // Handle general web content using Firecrawl
+      try {
+        const scrapeResult = await scrapeWebContent(actualUrl);
+
+        if (!scrapeResult.success || !scrapeResult.data) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: scrapeResult.error || "Failed to scrape web content",
+            },
+            { status: 500 }
+          );
+        }
+
+        result = {
+          status: "success",
+          result: {
+            type: "web_content",
+            text: scrapeResult.data.content,
+            desc: scrapeResult.data.description || scrapeResult.data.title,
+            author: {
+              nickname: scrapeResult.data.author || "Unknown",
+              unique_id: scrapeResult.data.author || "unknown",
+            },
+            video: null,
+            videoHD: null,
+            videoWatermark: null,
+          },
+        };
+
+        contentText =
+          scrapeResult.data.content || scrapeResult.data.description || "";
+      } catch (error) {
+        console.error("Web scraping error:", error);
+        return NextResponse.json(
+          { success: false, error: "Failed to analyze web content" },
+          { status: 500 }
+        );
+      }
     } else {
       // Handle TikTok video (existing logic)
       result = await Downloader(actualUrl, {
@@ -198,32 +262,41 @@ export async function POST(request: NextRequest) {
 
           // Prepare comprehensive context with content metadata
           const creator =
-            platform === "twitter"
-              ? result.result.author?.unique_id || "Unknown"
-              : result.result.author?.nickname || "Unknown";
+            result.result.author?.nickname ||
+            result.result.author?.unique_id ||
+            "Unknown";
+          const description = result.result.text || result.result.desc || "";
 
-          const description =
-            platform === "twitter"
-              ? result.result.text || ""
-              : result.result.desc || "";
+          let platformName: string;
+          let contentType: string;
+          if (platform === "twitter") {
+            platformName = "Twitter/X";
+            contentType = "Post";
+          } else if (platform === "tiktok") {
+            platformName = "TikTok";
+            contentType = "Video";
+          } else {
+            platformName = "Web Article/Blog";
+            contentType = "Content";
+          }
 
-          const contextPrompt = `${
-            platform === "twitter" ? "Twitter/X" : "TikTok"
-          } Post Analysis Context:
-- Creator: ${creator}
-- ${platform === "twitter" ? "Post" : "Video"} Content: "${description}"
-- ${platform === "twitter" ? "Post" : "Video"} URL: ${actualUrl}
-- Platform: ${platform === "twitter" ? "Twitter/X" : "TikTok"}
+          const contextPrompt = `${platformName} Content Analysis Context:
+- ${platform === "web" ? "Source" : "Creator"}: ${creator}
+- ${contentType} Content: "${description}"
+- ${contentType} URL: ${actualUrl}
+- Platform: ${platformName}
 
 ${transcription ? `Transcribed Content: "${transcription.text}"` : ""}
 
-Please fact-check the claims from this ${
-            platform === "twitter" ? "Twitter/X post" : "TikTok video"
-          } content, paying special attention to both the ${
-            platform === "twitter" ? "post text" : "video description"
-          } ${
-            transcription ? "and the transcribed speech" : ""
-          }. Consider the context that this is social media content that may contain opinions, personal experiences, or claims that need verification.`;
+Please fact-check the claims from this ${platformName.toLowerCase()} ${contentType.toLowerCase()} content, paying special attention to ${
+            platform === "web"
+              ? "the article content and any factual claims made"
+              : `both the ${contentType.toLowerCase()} text${transcription ? " and the transcribed speech" : ""}`
+          }. Consider the context that this is ${
+            platform === "web"
+              ? "web content that may contain opinions, analysis, or claims that need verification"
+              : "social media content that may contain opinions, personal experiences, or claims that need verification"
+          }.`;
 
           const factCheck = await researchAndFactCheck.execute(
             {
