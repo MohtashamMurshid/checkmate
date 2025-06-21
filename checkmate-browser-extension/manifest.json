@@ -7,7 +7,7 @@
   "content_scripts": [
     {
       "matches": ["*://www.tiktok.com/*"],
-      "js": ["content.js"],
+      "js": ["tiktok-content.js"],
       "css": ["style.css"]
     }
   ]
