@@ -2,7 +2,6 @@
 
 import { useAllAnalyses } from "../lib/hooks/use-all-analyses";
 import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { MoreHorizontal, User } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +15,26 @@ const TweetActions = ({ analysisId }: { analysisId: string }) => (
     </Link>
   </div>
 );
+
+const CreatorCredibilityBadge = ({ rating }: { rating: number }) => {
+  const getBadgeClass = () => {
+    if (rating > 7) {
+      return "bg-green-100 text-green-800";
+    } else if (rating >= 4) {
+      return "bg-yellow-100 text-yellow-800";
+    } else {
+      return "bg-red-100 text-red-800";
+    }
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeClass()}`}
+    >
+      Creator Credibility: {rating.toFixed(1)}
+    </span>
+  );
+};
 
 export function AllAnalyses() {
   const { analyses, isLoading, hasMore, isLoadingMore, loadMore } =
@@ -89,12 +108,25 @@ export function AllAnalyses() {
                       </p>
                     )}
 
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {analysis.requiresFactCheck && (
-                        <Badge variant="destructive">Needs Fact-Check</Badge>
+                    {/* Show analysis verdict and user rating if available */}
+                    <div className="flex items-center gap-3 mt-2">
+                      {analysis.factCheck?.verdict && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                          {analysis.factCheck.verdict.charAt(0).toUpperCase() +
+                            analysis.factCheck.verdict.slice(1)}
+                        </span>
                       )}
-                      {analysis.newsDetection?.hasNewsContent && (
-                        <Badge variant="secondary">News Content</Badge>
+                      {typeof analysis.userRating === "number" && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                          {analysis.user?.username || "User"} rated:{" "}
+                          {analysis.userRating.toFixed(1)} / 5
+                        </span>
+                      )}
+                      {typeof analysis.creatorCredibilityRating ===
+                        "number" && (
+                        <CreatorCredibilityBadge
+                          rating={analysis.creatorCredibilityRating}
+                        />
                       )}
                     </div>
 

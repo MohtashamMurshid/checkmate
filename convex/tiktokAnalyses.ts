@@ -135,7 +135,8 @@ export const getTopCredibleSources = query({
     return creators
       .filter(
         (creator) =>
-          creator.totalAnalyses >= 2 && creator.credibilityRating >= 7.0
+          // creator.totalAnalyses >= 2 &&
+          creator.credibilityRating >= 7.0
       )
       .sort((a, b) => b.credibilityRating - a.credibilityRating)
       .slice(0, args.limit || 10);
@@ -164,7 +165,8 @@ export const getTopMisinformationSources = query({
     return creators
       .filter(
         (creator) =>
-          creator.totalAnalyses >= 2 && creator.credibilityRating <= 4.0
+          // creator.totalAnalyses >= 2 &&
+          creator.credibilityRating <= 4.0
       )
       .sort((a, b) => a.credibilityRating - b.credibilityRating)
       .slice(0, args.limit || 10);
@@ -641,12 +643,31 @@ export const getAllAnalysesPaginated = query({
   },
 });
 
-// Get all TikTok analyses for all users (without pagination for now)
+// Get all analyses from all users
 export const getAllAnalyses = query({
-  args: {},
   async handler(ctx) {
-    // Get all analyses, ordered by creation date (newest first)
-    return await ctx.db.query("tiktokAnalyses").order("desc").collect();
+    const analyses = await ctx.db
+      .query("tiktokAnalyses")
+      .order("desc")
+      .collect();
+
+    // Enrich analyses with user data
+    return Promise.all(
+      analyses.map(async (analysis) => {
+        const user = await ctx.db.get(analysis.userId);
+        return {
+          ...analysis,
+          user: user
+            ? {
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                imageUrl: user.imageUrl,
+              }
+            : null,
+        };
+      })
+    );
   },
 });
 
@@ -743,7 +764,6 @@ export const deleteTikTokAnalysis = mutation({
 
 // Get analysis statistics for all users
 export const getAllAnalysisStats = query({
-  args: {},
   async handler(ctx) {
     const allAnalyses = await ctx.db.query("tiktokAnalyses").collect();
 
