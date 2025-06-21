@@ -11,7 +11,10 @@ import {
   LoaderIcon,
   CheckCircleIcon,
   AlertCircleIcon,
-  DownloadIcon,
+  ShieldCheckIcon,
+  ExternalLinkIcon,
+  AlertTriangleIcon,
+  XCircleIcon,
 } from "lucide-react";
 import { useTikTokAnalysis } from "@/lib/hooks/use-tiktok-analysis";
 
@@ -47,6 +50,46 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const handleReset = () => {
     setUrl("");
     reset();
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "true":
+        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
+      case "false":
+        return <XCircleIcon className="h-4 w-4 text-red-500" />;
+      case "misleading":
+        return <AlertTriangleIcon className="h-4 w-4 text-yellow-500" />;
+      case "unverifiable":
+        return <AlertCircleIcon className="h-4 w-4 text-gray-500" />;
+      default:
+        return <AlertCircleIcon className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "true":
+        return (
+          <Badge className="bg-green-100 text-green-800">Verified True</Badge>
+        );
+      case "false":
+        return <Badge className="bg-red-100 text-red-800">False</Badge>;
+      case "misleading":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">Misleading</Badge>
+        );
+      case "unverifiable":
+        return (
+          <Badge className="bg-gray-100 text-gray-800">Unverifiable</Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-blue-100 text-blue-800">
+            Needs Verification
+          </Badge>
+        );
+    }
   };
 
   return (
@@ -101,7 +144,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
 
         {/* Results */}
         {result && (
-          <div className="mx-auto max-w-2xl mt-8">
+          <div className="mx-auto max-w-4xl mt-8">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -115,169 +158,230 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
               </CardHeader>
               <CardContent>
                 {result.success && result.data ? (
-                  <div className="space-y-4 text-left">
-                    <div className="flex gap-4">
-                      <img
-                        src={result.data.thumbnail}
-                        alt="TikTok thumbnail"
-                        className="w-20 h-20 rounded-lg object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{result.data.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Content Type:{" "}
-                          {result.data.metadata.contentType === "video"
-                            ? "Video"
-                            : "Image Collection"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Creator: {result.data.metadata.creator}
-                        </p>
+                  <div className="space-y-6 text-left">
+                    {/* Video Metadata */}
+                    <div className="border-b pb-4">
+                      <h3 className="font-semibold text-lg mb-2">
+                        {result.data.metadata.title}
+                      </h3>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p>Creator: {result.data.metadata.creator}</p>
+                        <p>Original URL: {result.data.metadata.originalUrl}</p>
                       </div>
                     </div>
 
-                    {/* Download Options */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Download Options:
-                      </h4>
-
-                      {/* Video Downloads */}
-                      {result.data.hasVideo && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Video:
+                    {/* Transcription */}
+                    {result.data.transcription && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <ShieldCheckIcon className="h-4 w-4" />
+                          Transcription
+                        </h4>
+                        <div className="p-4 bg-muted rounded-lg">
+                          <p className="text-sm leading-relaxed">
+                            &ldquo;{result.data.transcription.text}&rdquo;
                           </p>
-                          <div className="flex flex-wrap gap-2">
-                            {result.data.downloadLinks.video.hd && (
-                              <Button size="sm" asChild>
-                                <a
-                                  href={result.data.downloadLinks.video.hd}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <DownloadIcon className="h-3 w-3 mr-1" />
-                                  HD Quality
-                                </a>
-                              </Button>
-                            )}
-                            {result.data.downloadLinks.video.standard && (
-                              <Button size="sm" variant="outline" asChild>
-                                <a
-                                  href={
-                                    result.data.downloadLinks.video.standard
-                                  }
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <DownloadIcon className="h-3 w-3 mr-1" />
-                                  Standard
-                                </a>
-                              </Button>
-                            )}
-                            {result.data.downloadLinks.video.alternative &&
-                              result.data.downloadLinks.video.alternative !==
-                                result.data.downloadLinks.video.standard && (
-                                <Button size="sm" variant="outline" asChild>
-                                  <a
-                                    href={
-                                      result.data.downloadLinks.video
-                                        .alternative
-                                    }
-                                    download
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <DownloadIcon className="h-3 w-3 mr-1" />
-                                    Alternative
-                                  </a>
-                                </Button>
+                          {result.data.transcription.language && (
+                            <p className="text-xs text-muted-foreground mt-3">
+                              Language: {result.data.transcription.language}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* News Detection */}
+                    {result.data.newsDetection && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <AlertCircleIcon className="h-4 w-4" />
+                          Content Analysis
+                        </h4>
+                        <div className="p-4 bg-muted rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Content Type:</span>
+                            <Badge
+                              variant={
+                                result.data.newsDetection.contentType ===
+                                "news_factual"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {result.data.newsDetection.contentType ===
+                              "news_factual"
+                                ? "News/Factual"
+                                : "Entertainment"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">
+                              Requires Fact-Check:
+                            </span>
+                            <Badge
+                              variant={
+                                result.data.requiresFactCheck
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {result.data.requiresFactCheck ? "Yes" : "No"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Confidence:</span>
+                            <span className="text-sm font-medium">
+                              {Math.round(
+                                result.data.newsDetection.confidence * 100
                               )}
+                              %
+                            </span>
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Image Downloads */}
-                      {result.data.hasImages &&
-                        result.data.downloadLinks.images.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              Images ({result.data.downloadLinks.images.length}
-                              ):
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                              {result.data.downloadLinks.images.map(
-                                (imageUrl, index) => (
-                                  <Button
-                                    key={index}
-                                    size="sm"
-                                    variant="outline"
-                                    asChild
-                                  >
-                                    <a
-                                      href={imageUrl}
-                                      download={`tiktok-image-${index + 1}.jpg`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <DownloadIcon className="h-3 w-3 mr-1" />
-                                      Image {index + 1}
-                                    </a>
-                                  </Button>
-                                )
-                              )}
+                    {/* Fact-Check Results */}
+                    {result.data.factCheck &&
+                      result.data.factCheck.results.length > 0 && (
+                        <div className="space-y-4">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <ShieldCheckIcon className="h-4 w-4" />
+                            Fact-Check Results (
+                            {result.data.factCheck.checkedClaims} claims
+                            analyzed)
+                          </h4>
+
+                          {/* Summary */}
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                            <div className="bg-green-50 p-3 rounded-lg text-center">
+                              <div className="text-lg font-bold text-green-700">
+                                {result.data.factCheck.summary.verifiedTrue}
+                              </div>
+                              <div className="text-xs text-green-600">
+                                Verified True
+                              </div>
+                            </div>
+                            <div className="bg-red-50 p-3 rounded-lg text-center">
+                              <div className="text-lg font-bold text-red-700">
+                                {result.data.factCheck.summary.verifiedFalse}
+                              </div>
+                              <div className="text-xs text-red-600">False</div>
+                            </div>
+                            <div className="bg-yellow-50 p-3 rounded-lg text-center">
+                              <div className="text-lg font-bold text-yellow-700">
+                                {result.data.factCheck.summary.misleading}
+                              </div>
+                              <div className="text-xs text-yellow-600">
+                                Misleading
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-lg text-center">
+                              <div className="text-lg font-bold text-gray-700">
+                                {result.data.factCheck.summary.unverifiable}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                Unverifiable
+                              </div>
+                            </div>
+                            <div className="bg-blue-50 p-3 rounded-lg text-center">
+                              <div className="text-lg font-bold text-blue-700">
+                                {
+                                  result.data.factCheck.summary
+                                    .needsVerification
+                                }
+                              </div>
+                              <div className="text-xs text-blue-600">
+                                Needs Review
+                              </div>
                             </div>
                           </div>
-                        )}
 
-                      {/* Audio Download */}
-                      {result.data.hasAudio &&
-                        result.data.downloadLinks.audio && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              Audio:
-                            </p>
-                            <Button size="sm" variant="outline" asChild>
-                              <a
-                                href={result.data.downloadLinks.audio}
-                                download="tiktok-audio.mp3"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <DownloadIcon className="h-3 w-3 mr-1" />
-                                Download Audio
-                              </a>
-                            </Button>
-                          </div>
-                        )}
+                          {/* Individual Claims */}
+                          <div className="space-y-3">
+                            {result.data.factCheck.results.map(
+                              (factCheck, index) => (
+                                <Card
+                                  key={index}
+                                  className="border-l-4 border-l-blue-500"
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <p className="text-sm flex-1 font-medium">
+                                          Claim: &ldquo;{factCheck.claim}&rdquo;
+                                        </p>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          {getStatusIcon(factCheck.status)}
+                                          {getStatusBadge(factCheck.status)}
+                                        </div>
+                                      </div>
 
-                      {/* Transcription */}
-                      {result.data.transcription && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Transcription:
-                          </p>
-                          <div className="p-3 bg-muted rounded-lg">
-                            <p className="text-sm">
-                              &ldquo;{result.data.transcription.text}&rdquo;
-                            </p>
-                            {result.data.transcription.language && (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Language: {result.data.transcription.language}
-                              </p>
+                                      {factCheck.analysis && (
+                                        <div className="bg-gray-50 p-3 rounded text-xs">
+                                          <p className="font-medium mb-1">
+                                            Analysis:
+                                          </p>
+                                          <p>
+                                            {factCheck.analysis.substring(
+                                              0,
+                                              200
+                                            )}
+                                            ...
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {factCheck.sources &&
+                                        factCheck.sources.length > 0 && (
+                                          <div>
+                                            <p className="text-xs font-medium mb-2">
+                                              Sources:
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {factCheck.sources
+                                                .slice(0, 3)
+                                                .map((source, sourceIndex) => (
+                                                  <Button
+                                                    key={sourceIndex}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    asChild
+                                                  >
+                                                    <a
+                                                      href={source.url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="text-xs"
+                                                    >
+                                                      {source.source}
+                                                      <ExternalLinkIcon className="h-3 w-3 ml-1" />
+                                                    </a>
+                                                  </Button>
+                                                ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      <div className="text-xs text-muted-foreground">
+                                        Confidence:{" "}
+                                        {Math.round(factCheck.confidence * 100)}
+                                        %
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )
                             )}
                           </div>
                         </div>
                       )}
 
-                      {/* Reset Button */}
-                      <div className="pt-2 border-t">
-                        <Button variant="outline" onClick={handleReset}>
-                          Analyze Another
-                        </Button>
-                      </div>
+                    {/* Reset Button */}
+                    <div className="pt-4 border-t">
+                      <Button variant="outline" onClick={handleReset}>
+                        Analyze Another Video
+                      </Button>
                     </div>
                   </div>
                 ) : (

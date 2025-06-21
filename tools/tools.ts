@@ -3,7 +3,13 @@ import { z } from "zod";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
 import { experimental_transcribe } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
+/**
+ * Helper function to transcribe a video directly from a given URL using OpenAI Whisper.
+ * @param {string} videoUrl - The direct URL of the video to transcribe.
+ * @returns {Promise<{ success: boolean; data?: { text: string; segments: any[]; language: string }; error?: string }>} Transcription result object.
+ */
 // Helper function for transcribing video
 export async function transcribeVideoDirectly(videoUrl: string) {
   try {
@@ -58,7 +64,10 @@ export async function transcribeVideoDirectly(videoUrl: string) {
   }
 }
 
-// Tool for analyzing TikTok videos and extracting metadata
+/**
+ * Tool for analyzing a TikTok video URL to extract metadata and download links for fact-checking.
+ * @type {import("ai").Tool}
+ */
 export const analyzeTikTokVideo = tool({
   description:
     "Analyze a TikTok video URL to extract metadata and download links for fact-checking",
@@ -153,7 +162,10 @@ export const analyzeTikTokVideo = tool({
   },
 });
 
-// Tool for transcribing TikTok video audio
+/**
+ * Tool for transcribing audio from a TikTok video URL using OpenAI Whisper for fact-checking analysis.
+ * @type {import("ai").Tool}
+ */
 export const transcribeTikTokVideo = tool({
   description:
     "Transcribe audio from a TikTok video URL using OpenAI Whisper for fact-checking analysis",
@@ -214,7 +226,10 @@ export const transcribeTikTokVideo = tool({
   },
 });
 
-// Tool for analyzing content sentiment and themes
+/**
+ * Tool for analyzing the sentiment and themes of TikTok video content based on transcription and metadata.
+ * @type {import("ai").Tool}
+ */
 export const analyzeContentSentiment = tool({
   description:
     "Analyze the sentiment and themes of TikTok video content based on transcription and metadata",
@@ -270,7 +285,10 @@ export const analyzeContentSentiment = tool({
   },
 });
 
-// Tool for extracting hashtags and mentions from content
+/**
+ * Tool for extracting hashtags, mentions, and social media elements from TikTok content.
+ * @type {import("ai").Tool}
+ */
 export const extractHashtagsAndMentions = tool({
   description:
     "Extract hashtags, mentions, and social media elements from TikTok content",
@@ -304,7 +322,10 @@ export const extractHashtagsAndMentions = tool({
   },
 });
 
-// Tool for generating content insights and recommendations
+/**
+ * Tool for generating content insights and recommendations based on TikTok video analysis.
+ * @type {import("ai").Tool}
+ */
 export const generateContentInsights = tool({
   description:
     "Generate insights and recommendations based on TikTok video analysis",
@@ -356,7 +377,10 @@ export const generateContentInsights = tool({
   },
 });
 
-// Tool for comparing multiple TikTok videos
+/**
+ * Tool for comparing multiple TikTok videos for content analysis, engagement metrics, and trends.
+ * @type {import("ai").Tool}
+ */
 export const compareTikTokVideos = tool({
   description:
     "Compare multiple TikTok videos for content analysis, engagement metrics, and trends",
@@ -399,7 +423,10 @@ export const compareTikTokVideos = tool({
   },
 });
 
-// Tool for generating video summaries
+/**
+ * Tool for generating a comprehensive summary of a TikTok video including key points and takeaways.
+ * @type {import("ai").Tool}
+ */
 export const generateVideoSummary = tool({
   description:
     "Generate a comprehensive summary of a TikTok video including key points and takeaways",
@@ -461,7 +488,10 @@ export const generateVideoSummary = tool({
   },
 });
 
-// Tool 3: News Detection
+/**
+ * Tool to determine whether the transcription content contains news or factual claims that need verification.
+ * @type {import("ai").Tool}
+ */
 export const detectNewsContent = tool({
   description:
     "Determine whether the transcription content contains news or factual claims that need verification",
@@ -573,10 +603,280 @@ export const detectNewsContent = tool({
   },
 });
 
-// Tool 4: Research and Fact-Check using Perplexity
+/**
+ * Trust rating configuration for different source types
+ */
+const SOURCE_TRUST_RATINGS = {
+  // Tier 1: Highly trusted fact-checking organizations
+  "snopes.com": { rating: 0.95, category: "fact-check", name: "Snopes" },
+  "factcheck.org": {
+    rating: 0.94,
+    category: "fact-check",
+    name: "FactCheck.org",
+  },
+  "politifact.com": {
+    rating: 0.93,
+    category: "fact-check",
+    name: "PolitiFact",
+  },
+  "reuters.com": { rating: 0.92, category: "news-agency", name: "Reuters" },
+  "apnews.com": {
+    rating: 0.92,
+    category: "news-agency",
+    name: "Associated Press",
+  },
+  "bbc.com": { rating: 0.9, category: "news-outlet", name: "BBC News" },
+
+  // Tier 2: Credible news organizations
+  "cnn.com": { rating: 0.85, category: "news-outlet", name: "CNN" },
+  "npr.org": { rating: 0.88, category: "news-outlet", name: "NPR" },
+  "washingtonpost.com": {
+    rating: 0.87,
+    category: "news-outlet",
+    name: "Washington Post",
+  },
+  "nytimes.com": {
+    rating: 0.87,
+    category: "news-outlet",
+    name: "New York Times",
+  },
+  "theguardian.com": {
+    rating: 0.85,
+    category: "news-outlet",
+    name: "The Guardian",
+  },
+
+  // Tier 3: Regional and specialized sources
+  "malaymail.com": {
+    rating: 0.75,
+    category: "regional-news",
+    name: "Malay Mail",
+  },
+  "thestar.com.my": {
+    rating: 0.75,
+    category: "regional-news",
+    name: "The Star Malaysia",
+  },
+  "channelnewsasia.com": {
+    rating: 0.8,
+    category: "regional-news",
+    name: "Channel NewsAsia",
+  },
+  "straitstimes.com": {
+    rating: 0.8,
+    category: "regional-news",
+    name: "The Straits Times",
+  },
+
+  // Default for unknown sources
+  default: { rating: 0.5, category: "unknown", name: "Unknown Source" },
+};
+
+/**
+ * Extract domain from URL for trust rating lookup
+ */
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace(/^www\./, "");
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * Get trust rating for a source URL
+ */
+function getTrustRating(url: string) {
+  const domain = extractDomain(url);
+  return SOURCE_TRUST_RATINGS[domain] || SOURCE_TRUST_RATINGS["default"];
+}
+
+/**
+ * Fetch web preview data from a URL
+ */
+async function fetchWebPreview(url: string, searchQuery: string) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; CheckMate-FactChecker/1.0)",
+      },
+      timeout: 10000, // 10 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const html = await response.text();
+
+    // Extract basic metadata using simple regex (could be enhanced with a proper HTML parser)
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const descriptionMatch =
+      html.match(
+        /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i
+      ) ||
+      html.match(
+        /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i
+      );
+
+    const title = titleMatch ? titleMatch[1].trim() : "No Title";
+    const description = descriptionMatch ? descriptionMatch[1].trim() : "";
+
+    // Simple relevance scoring based on search query presence
+    const content = html.toLowerCase();
+    const queryWords = searchQuery.toLowerCase().split(/\s+/);
+    const relevanceScore = queryWords.reduce((score, word) => {
+      const matches = (content.match(new RegExp(word, "g")) || []).length;
+      return score + Math.min(matches * 0.1, 0.3); // Cap per word contribution
+    }, 0);
+
+    const trustInfo = getTrustRating(url);
+
+    return {
+      title,
+      description,
+      url,
+      source: trustInfo.name,
+      trustRating: trustInfo.rating,
+      category: trustInfo.category,
+      relevance: Math.min(relevanceScore, 1.0),
+      preview: description || title,
+      fetchedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    const trustInfo = getTrustRating(url);
+    return {
+      title: `Error fetching from ${trustInfo.name}`,
+      description: `Could not fetch preview: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      url,
+      source: trustInfo.name,
+      trustRating: Math.max(trustInfo.rating - 0.2, 0.1), // Reduce trust for failed fetches
+      category: trustInfo.category,
+      relevance: 0.1,
+      preview: "Preview unavailable",
+      fetchedAt: new Date().toISOString(),
+      error: true,
+    };
+  }
+}
+
+/**
+ * Enhanced source verification with web previews and trust ratings
+ */
+async function getVerifiedSources(claim: string, language: string = "en") {
+  const sources = [];
+
+  // Define fact-checking search URLs with better query encoding
+  const searchUrls = [
+    {
+      name: "Snopes",
+      url: `https://www.snopes.com/search/${encodeURIComponent(claim)}`,
+      priority: 1,
+    },
+    {
+      name: "FactCheck.org",
+      url: `https://www.factcheck.org/search/?s=${encodeURIComponent(claim)}`,
+      priority: 1,
+    },
+    {
+      name: "PolitiFact",
+      url: `https://www.politifact.com/search/?q=${encodeURIComponent(claim)}`,
+      priority: 1,
+    },
+    {
+      name: "Reuters Fact Check",
+      url: `https://www.reuters.com/news/search/?blob=${encodeURIComponent(
+        claim + " fact check"
+      )}`,
+      priority: 2,
+    },
+    {
+      name: "AP Fact Check",
+      url: `https://apnews.com/search?q=${encodeURIComponent(
+        claim + " fact check"
+      )}`,
+      priority: 2,
+    },
+  ];
+
+  // Add regional sources for non-English content
+  if (language === "zh" || claim.match(/[\u4e00-\u9fff]/)) {
+    searchUrls.push(
+      {
+        name: "Channel NewsAsia",
+        url: `https://www.channelnewsasia.com/search?q=${encodeURIComponent(
+          claim
+        )}`,
+        priority: 2,
+      },
+      {
+        name: "The Straits Times",
+        url: `https://www.straitstimes.com/search?query=${encodeURIComponent(
+          claim
+        )}`,
+        priority: 2,
+      }
+    );
+  }
+
+  // Fetch previews in parallel, limiting to top 5 sources
+  const topSources = searchUrls
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 5);
+
+  const previewPromises = topSources.map((source) =>
+    fetchWebPreview(source.url, claim)
+  );
+
+  try {
+    const previews = await Promise.allSettled(previewPromises);
+
+    previews.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        sources.push(result.value);
+      } else {
+        // Add fallback source info even if preview failed
+        const fallbackSource = topSources[index];
+        const trustInfo = getTrustRating(fallbackSource.url);
+        sources.push({
+          title: fallbackSource.name,
+          description: "Preview could not be loaded",
+          url: fallbackSource.url,
+          source: trustInfo.name,
+          trustRating: Math.max(trustInfo.rating - 0.3, 0.1),
+          category: trustInfo.category,
+          relevance: 0.1,
+          preview: "Search results may be available",
+          fetchedAt: new Date().toISOString(),
+          error: true,
+        });
+      }
+    });
+
+    // Sort by trust rating and relevance
+    sources.sort((a, b) => {
+      const aScore = a.trustRating * 0.7 + a.relevance * 0.3;
+      const bScore = b.trustRating * 0.7 + b.relevance * 0.3;
+      return bScore - aScore;
+    });
+
+    return sources;
+  } catch (error) {
+    console.warn("Error fetching source previews:", error);
+    return [];
+  }
+}
+
+/**
+ * Tool to search the web using OpenAI's web search to validate key claims from the transcription with fact-checking sources.
+ * @type {import("ai").Tool}
+ */
 export const researchAndFactCheck = tool({
   description:
-    "Search the web using Perplexity to validate key claims from the transcription with fact-checking sources",
+    "Search the web using OpenAI's web search to validate key claims from the transcription with fact-checking sources",
   parameters: z.object({
     claims: z.array(z.string()).describe("Array of factual claims to verify"),
     context: z
@@ -587,17 +887,106 @@ export const researchAndFactCheck = tool({
   execute: async ({ claims, context }) => {
     const factCheckResults = [];
 
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      return {
+        success: false,
+        error: "OpenAI API key not configured",
+      };
+    }
+
     // Use context for enhanced search if provided
     const searchContext = context ? ` Context: ${context}` : "";
 
     for (const claim of claims.slice(0, 3)) {
       // Limit to 3 claims to avoid rate limits
       try {
-        // In a real implementation, you would call actual fact-checking APIs
-        // For now, we'll simulate the structure of what would be returned
+        // Create a comprehensive fact-checking query
+        const factCheckQuery = `Fact-check this claim with credible sources: "${claim}". 
+        ${searchContext}
+        
+        Please provide:
+        1. Verification status (true/false/misleading/unverifiable)
+        2. Evidence from credible sources
+        3. List credible fact-checking websites and news sources
+        4. Include URLs when possible
+        5. Explain any nuances or context`;
 
-        // Extract key terms from the claim for search
-        const searchTerms = (claim + searchContext)
+        // Use AI SDK with OpenAI web search model to fact-check the claim
+        const searchResponse = await generateText({
+          model: openai("gpt-4o"),
+          system:
+            "You are a professional fact-checker. Always provide evidence-based analysis with credible sources. Be thorough and objective.",
+          prompt: factCheckQuery,
+          tools: {
+            web_search: openai.tools.webSearchPreview(),
+          },
+        });
+
+        const searchContent = searchResponse.text || "";
+
+        // Since AI SDK doesn't expose raw annotations, we'll simulate source extraction
+        // by looking for common patterns in the response
+        const sources: Array<{
+          title: string;
+          url: string;
+          source: string;
+          relevance: number;
+          description: string;
+        }> = [];
+
+        // Extract URLs from the response content
+        const urlMatches = searchContent.match(/https?:\/\/[^\s\)]+/g) || [];
+        urlMatches.forEach((url, index) => {
+          try {
+            const hostname = new URL(url).hostname;
+            sources.push({
+              title: `Source ${index + 1}`,
+              url: url,
+              source: hostname,
+              relevance: 0.8,
+              description: "Source found in web search analysis",
+            });
+          } catch {
+            // Skip invalid URLs
+          }
+        });
+
+        // Analyze the response to determine verification status
+        const lowercaseContent = searchContent.toLowerCase();
+        let status = "requires_verification";
+        let confidence = 0.7;
+
+        if (
+          lowercaseContent.includes("true") ||
+          lowercaseContent.includes("verified") ||
+          lowercaseContent.includes("accurate")
+        ) {
+          status = "true";
+          confidence = 0.8;
+        } else if (
+          lowercaseContent.includes("false") ||
+          lowercaseContent.includes("debunked") ||
+          lowercaseContent.includes("incorrect")
+        ) {
+          status = "false";
+          confidence = 0.9;
+        } else if (
+          lowercaseContent.includes("misleading") ||
+          lowercaseContent.includes("partially")
+        ) {
+          status = "misleading";
+          confidence = 0.8;
+        } else if (
+          lowercaseContent.includes("unverifiable") ||
+          lowercaseContent.includes("no evidence")
+        ) {
+          status = "unverifiable";
+          confidence = 0.7;
+        }
+
+        // Extract key terms from the claim for additional context
+        const searchTerms = claim
           .toLowerCase()
           .replace(/[^\w\s]/g, "")
           .split(" ")
@@ -605,30 +994,21 @@ export const researchAndFactCheck = tool({
           .slice(0, 5)
           .join(" ");
 
-        // Use Perplexity for comprehensive fact-checking research
-        const perplexityQuery = `Fact-check this claim: "${claim}". Provide verification status and credible sources.`;
-
         const factCheckResult = {
           claim: claim,
           searchTerms: searchTerms,
-          perplexityQuery: perplexityQuery,
-          status: "requires_verification", // Would be determined by Perplexity analysis
-          confidence: 0.7,
+          status: status,
+          confidence: confidence,
+          webSearchAnalysis: {
+            summary:
+              searchContent.substring(0, 500) +
+              (searchContent.length > 500 ? "..." : ""),
+            fullAnalysis: searchContent,
+            sourcesFound: sources.length,
+          },
           sources: [
-            // Primary source: Perplexity AI analysis
-            {
-              title: `Perplexity Fact-Check: ${searchTerms}`,
-              url: `https://www.perplexity.ai/search?q=${encodeURIComponent(
-                perplexityQuery
-              )}`,
-              source: "Perplexity AI",
-              relevance: 0.9,
-              description: `AI-powered fact-checking analysis for: "${claim.substring(
-                0,
-                50
-              )}..."`,
-            },
-            // Additional fact-checking sources for verification
+            ...sources,
+            // Add fallback fact-checking sources
             {
               title: `FactCheck.org: "${searchTerms}"`,
               url: `https://factcheck.org/search?q=${encodeURIComponent(
@@ -659,14 +1039,6 @@ export const researchAndFactCheck = tool({
           ],
           keyTopics: searchTerms.split(" "),
           needsManualVerification: false,
-          perplexityAnalysis: {
-            summary: `Perplexity analysis of claim: "${claim.substring(
-              0,
-              100
-            )}..."`,
-            recommendedAction:
-              "Review Perplexity results and cross-reference with additional sources",
-          },
         };
 
         factCheckResults.push(factCheckResult);
@@ -719,7 +1091,10 @@ export const researchAndFactCheck = tool({
   },
 });
 
-// Tool 5: Generate Credibility Report
+/**
+ * Tool to generate a comprehensive credibility report with main claims, verification status, and sources.
+ * @type {import("ai").Tool}
+ */
 export const generateCredibilityReport = tool({
   description:
     "Generate a comprehensive credibility report with main claims, verification status, and sources",
@@ -851,6 +1226,10 @@ export const generateCredibilityReport = tool({
   },
 });
 
+/**
+ * Array of TikTok analysis tools for easy use.
+ * @type {import("ai").Tool[]}
+ */
 // Export all tools as an array for easy use
 export const tiktokAnalysisTools = [
   analyzeTikTokVideo,
@@ -862,6 +1241,10 @@ export const tiktokAnalysisTools = [
   generateVideoSummary,
 ];
 
+/**
+ * Array of fact-checking tools for easy use.
+ * @type {import("ai").Tool[]}
+ */
 // Export all fact-checking tools
 export const factCheckingTools = [
   analyzeTikTokVideo,

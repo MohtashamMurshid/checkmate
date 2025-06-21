@@ -1,33 +1,64 @@
 import { useState } from "react";
 
-interface TikTokAnalysisData {
-  title: string;
-  thumbnail: string;
-  hasVideo: boolean;
-  hasImages: boolean;
-  hasAudio: boolean;
-  downloadLinks: {
-    video: {
-      standard?: string;
-      alternative?: string;
-      hd?: string;
-    };
-    audio?: string;
-    images: string[];
-  };
-  metadata: {
-    creator: string;
-    contentType: "image_collection" | "video";
-  };
-  transcription?: {
+interface TranscriptionData {
+  text: string;
+  segments: Array<{
     text: string;
-    segments: Array<{
-      text: string;
-      startSecond: number;
-      endSecond: number;
-    }>;
-    language?: string;
-  } | null;
+    startSecond: number;
+    endSecond: number;
+  }>;
+  language?: string;
+}
+
+interface NewsDetection {
+  hasNewsContent: boolean;
+  confidence: number;
+  newsKeywordsFound: string[];
+  potentialClaims: string[];
+  needsFactCheck: boolean;
+  contentType: string;
+}
+
+interface FactCheckSource {
+  title: string;
+  url: string;
+  source: string;
+  relevance: number;
+}
+
+interface FactCheckResult {
+  claim: string;
+  status: string;
+  confidence: number;
+  analysis?: string;
+  sources?: FactCheckSource[];
+  error?: string;
+}
+
+interface FactCheckData {
+  totalClaims: number;
+  checkedClaims: number;
+  results: FactCheckResult[];
+  summary: {
+    verifiedTrue: number;
+    verifiedFalse: number;
+    misleading: number;
+    unverifiable: number;
+    needsVerification: number;
+  };
+}
+
+interface TikTokAnalysisData {
+  transcription: TranscriptionData;
+  metadata: {
+    title: string;
+    description: string;
+    creator: string;
+    originalUrl: string;
+  };
+  newsDetection: NewsDetection | null;
+  factCheck: FactCheckData | null;
+  requiresFactCheck: boolean;
 }
 
 interface TikTokAnalysisResult {
@@ -52,13 +83,13 @@ export function useTikTokAnalysis() {
         throw new Error("Invalid TikTok URL format");
       }
 
-      // Call the API route
-      const response = await fetch("/api/analyze-tiktok", {
+      // Call the transcribe API route
+      const response = await fetch("/api/transcribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ tiktokUrl: url }),
       });
 
       if (!response.ok) {
@@ -67,6 +98,12 @@ export function useTikTokAnalysis() {
       }
 
       const analysis: TikTokAnalysisResult = await response.json();
+      console.log("🔍 Full API Response:", JSON.stringify(analysis, null, 2));
+      console.log("📊 Analysis Data:", analysis.data);
+      if (analysis.data?.factCheck) {
+        console.log("✅ Fact-Check Results:", analysis.data.factCheck);
+        console.log("📋 Individual Claims:", analysis.data.factCheck.results);
+      }
       setResult(analysis);
       return analysis;
     } catch (error) {
