@@ -21,7 +21,7 @@ import {
   BookmarkIcon,
 } from "lucide-react";
 import { useTikTokAnalysis } from "@/lib/hooks/use-tiktok-analysis";
-import { useSaveTikTokAnalysis } from "@/lib/hooks/use-saved-analyses";
+import { useSaveTikTokAnalysisWithCredibility } from "@/lib/hooks/use-saved-analyses";
 import { useConvexAuth } from "convex/react";
 import { toast } from "sonner";
 import { AnalysisRenderer } from "@/components/analysis-renderer";
@@ -54,7 +54,8 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [isSaved, setIsSaved] = useState(false);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
   const { isAuthenticated } = useConvexAuth();
-  const saveTikTokAnalysis = useSaveTikTokAnalysis();
+  const saveTikTokAnalysisWithCredibility =
+    useSaveTikTokAnalysisWithCredibility();
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -169,9 +170,12 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
             }
           : undefined,
         requiresFactCheck: result.data.requiresFactCheck,
+        // Use creator credibility rating if available, or default to neutral rating
+        creatorCredibilityRating: result.data.creatorCredibilityRating || 5.0,
       };
 
-      await saveTikTokAnalysis(saveData);
+      // Use enhanced save function to properly handle content creators
+      await saveTikTokAnalysisWithCredibility(saveData);
 
       setIsSaved(true);
       toast.success(t.analysisSaved);
