@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { transcribeVideoDirectly } from "../../../tools/tools";
+import { transcribeVideoDirectly } from "../../../tools/index";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
-import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import {
+  detectNewsContent,
+  researchAndFactCheck,
+} from "../../../tools/fact-checking";
+
+// Define interfaces for proper typing
+interface FactCheckResult {
+  claim: string;
+  status: string;
+  confidence: number;
+  analysis?: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+    source: string;
+    relevance: number;
+  }>;
+  error?: string;
+}
+
+interface FactCheckData {
+  results: FactCheckResult[];
+  summary: {
+    verifiedTrue: number;
+    verifiedFalse: number;
+    misleading: number;
+    unverifiable: number;
+    needsVerification: number;
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { videoUrl, tiktokUrl, title, description } = await request.json();
+    const { videoUrl, tiktokUrl } = await request.json();
 
     // Validate input - either videoUrl (direct video) or tiktokUrl (TikTok URL)
     if (!videoUrl && !tiktokUrl) {
@@ -16,238 +44,219 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let videoTitle = title || "";
-    const videoDescription = description || "";
-    let creator = "";
-    let actualVideoUrl = videoUrl;
+    // Use tiktokUrl if provided, otherwise fall back to videoUrl
+    const actualTiktokUrl = tiktokUrl || videoUrl;
 
-    // If TikTok URL is provided, analyze it first to get metadata and video URL
-    if (tiktokUrl) {
-      console.log("Analyzing TikTok video for metadata...");
-
-      try {
-        // Validate TikTok URL format
-        const tiktokUrlPattern =
-          /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-        if (!tiktokUrlPattern.test(tiktokUrl)) {
-          return NextResponse.json(
-            { success: false, error: "Invalid TikTok URL format" },
-            { status: 400 }
-          );
-        }
-
-        // Download TikTok content using the API
-        const result = await Downloader(tiktokUrl, {
-          version: "v3",
-        });
-
-        if (result.status === "success" && result.result) {
-          // Extract metadata
-          videoTitle = result.result.desc || videoTitle || "TikTok Video";
-          creator = result.result.author?.nickname || "";
-
-          // Get the best quality video URL for transcription
-          actualVideoUrl =
-            result.result.videoHD ||
-            result.result.videoWatermark ||
-            actualVideoUrl;
-        }
-      } catch (error) {
-        console.warn(
-          "TikTok analysis failed, proceeding with direct transcription:",
-          error
-        );
-      }
-    }
-
-    // Transcribe the video
-    if (!actualVideoUrl) {
+    // Validate TikTok URL format
+    const tiktokUrlPattern =
+      /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
+    if (!tiktokUrlPattern.test(actualTiktokUrl)) {
       return NextResponse.json(
-        { success: false, error: "No video URL available for transcription" },
+        { success: false, error: "Invalid TikTok URL format" },
         { status: 400 }
       );
     }
 
-    console.log("Transcribing video...");
-    const transcriptionResult = await transcribeVideoDirectly(actualVideoUrl);
+    // Download TikTok content using the new API
+    const result = await Downloader(actualTiktokUrl, {
+      version: "v3", // Use the latest version
+    });
 
-    if (!transcriptionResult.success) {
+    if (result.status !== "success" || !result.result) {
       return NextResponse.json(
-        { success: false, error: transcriptionResult.error },
-        {
-          status:
-            transcriptionResult.error === "OpenAI API key not configured"
-              ? 500
-              : 400,
-        }
+        { success: false, error: "Failed to analyze TikTok video" },
+        { status: 500 }
       );
     }
 
-    const transcriptionText = transcriptionResult.data?.text || "";
+    // Get the best quality MP4 video URL for transcription
+    const extractedVideoUrl =
+      result.result.videoHD || result.result.videoWatermark || "";
+    let transcription = null;
 
-    // Detect if content contains news or factual claims
-    console.log("Detecting news content...");
+    // If it's a video, try to transcribe it using the tool function
+    if (result.result.type === "video" && extractedVideoUrl) {
+      try {
+        const transcriptionResult =
+          await transcribeVideoDirectly(extractedVideoUrl);
+        if (transcriptionResult.success && transcriptionResult.data) {
+          transcription = transcriptionResult.data;
+        }
+      } catch {
+        // Continue without transcription if it fails
+      }
+    }
+
+    // Perform fact-checking if transcription is available
     let newsDetection = null;
     let factCheckResults = null;
 
-    try {
-      // Assume all content is news and extract potential claims
-      const sentences = transcriptionText
-        .split(/[.!?]+/)
-        .filter((s: string) => s.trim().length > 10)
-        .map((s: string) => s.trim());
+    if (transcription && transcription.text) {
+      try {
+        console.log("🔍 Starting fact-checking process...");
 
-      const potentialClaims = sentences.slice(0, 5); // Limit to top 5 claims
-
-      newsDetection = {
-        hasNewsContent: true,
-        confidence: 0.8,
-        newsKeywordsFound: [],
-        potentialClaims,
-        needsFactCheck: true,
-        contentType: "news_factual",
-      };
-
-      // Perform fact-checking on the claims
-      if (potentialClaims.length > 0) {
-        console.log("News content detected, performing fact-checking...");
-
-        // Limit to 3 claims to avoid rate limits
-        const claimsToCheck = potentialClaims.slice(0, 3);
-        const factCheckResults_array = [];
-
-        for (const claim of claimsToCheck) {
-          try {
-            // Create a comprehensive fact-checking query
-            const factCheckQuery = `Fact-check this claim with credible sources: "${claim}". 
-            Context: TikTok video by ${creator}: ${videoTitle}. ${
-              videoDescription || ""
-            }
-            
-            Please provide:
-            1. Verification status (true/false/misleading/unverifiable)
-            2. Evidence from credible sources
-            3. List credible fact-checking websites and news sources
-            4. Include URLs when possible
-            5. Explain any nuances or context`;
-
-            // Use AI SDK with OpenAI to fact-check the claim
-            const searchResponse = await generateText({
-              model: openai("gpt-4o"),
-              system:
-                "You are a professional fact-checker. Always provide evidence-based analysis with credible sources. Be thorough and objective.",
-              prompt: factCheckQuery,
-            });
-
-            const searchContent = searchResponse.text || "";
-
-            // Analyze the response to determine verification status
-            const lowercaseContent = searchContent.toLowerCase();
-            let status = "requires_verification";
-            let confidence = 0.7;
-
-            if (
-              lowercaseContent.includes("true") ||
-              lowercaseContent.includes("verified") ||
-              lowercaseContent.includes("accurate")
-            ) {
-              status = "true";
-              confidence = 0.8;
-            } else if (
-              lowercaseContent.includes("false") ||
-              lowercaseContent.includes("debunked") ||
-              lowercaseContent.includes("incorrect")
-            ) {
-              status = "false";
-              confidence = 0.9;
-            } else if (
-              lowercaseContent.includes("misleading") ||
-              lowercaseContent.includes("partially")
-            ) {
-              status = "misleading";
-              confidence = 0.8;
-            } else if (
-              lowercaseContent.includes("unverifiable") ||
-              lowercaseContent.includes("no evidence")
-            ) {
-              status = "unverifiable";
-              confidence = 0.7;
-            }
-
-            factCheckResults_array.push({
-              claim,
-              status,
-              confidence,
-              analysis: searchContent,
-              sources: [],
-            });
-          } catch (error) {
-            factCheckResults_array.push({
-              claim,
-              status: "error",
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to research this claim",
-              confidence: 0,
-            });
-          }
-        }
-
-        factCheckResults = {
-          totalClaims: potentialClaims.length,
-          checkedClaims: factCheckResults_array.length,
-          results: factCheckResults_array,
-          summary: {
-            verifiedTrue: factCheckResults_array.filter(
-              (r) => r.status === "true"
-            ).length,
-            verifiedFalse: factCheckResults_array.filter(
-              (r) => r.status === "false"
-            ).length,
-            misleading: factCheckResults_array.filter(
-              (r) => r.status === "misleading"
-            ).length,
-            unverifiable: factCheckResults_array.filter(
-              (r) => r.status === "unverifiable"
-            ).length,
-            needsVerification: factCheckResults_array.filter(
-              (r) => r.status === "requires_verification"
-            ).length,
+        // First, detect if the content contains news/factual claims
+        console.log("📰 Detecting news content...");
+        const newsDetectionResult = await detectNewsContent.execute(
+          {
+            transcription: transcription.text,
+            title: result.result.desc || "",
           },
-        };
+          {
+            toolCallId: "detect-news-content",
+            messages: [],
+          }
+        );
+
+        console.log("📰 News detection result:", newsDetectionResult);
+
+        if (newsDetectionResult.success && newsDetectionResult.data) {
+          newsDetection = {
+            hasNewsContent: newsDetectionResult.data.needsFactCheck,
+            confidence: 0.8,
+            newsKeywordsFound: [],
+            potentialClaims: newsDetectionResult.data.potentialClaims || [],
+            needsFactCheck: newsDetectionResult.data.needsFactCheck,
+            contentType:
+              newsDetectionResult.data.contentType || "entertainment",
+          };
+
+          console.log("📊 Formatted news detection:", newsDetection);
+
+          // If factual content is detected, perform fact-checking
+          if (newsDetectionResult.data.needsFactCheck) {
+            let claimsToCheck = newsDetectionResult.data.potentialClaims || [];
+
+            // If no specific claims were extracted, use the transcription text as a general claim
+            if (claimsToCheck.length === 0) {
+              // Break down the transcription into key statements for fact-checking
+              const sentences = transcription.text
+                .split(/[.!?]+/)
+                .filter((s) => s.trim().length > 20)
+                .slice(0, 3); // Take first 3 substantial sentences
+
+              claimsToCheck =
+                sentences.length > 0
+                  ? sentences
+                  : [transcription.text.slice(0, 500)];
+            }
+
+            console.log("✅ Starting fact-check for claims:", claimsToCheck);
+
+            const factCheck = await researchAndFactCheck.execute(
+              {
+                claims: claimsToCheck,
+                context: `TikTok video by ${result.result.author?.nickname || "Unknown"}: ${result.result.desc || ""}`,
+              },
+              {
+                toolCallId: "research-fact-check",
+                messages: [],
+              }
+            );
+
+            console.log("🔬 Fact-check result:", factCheck);
+
+            if (factCheck.success && factCheck.data) {
+              factCheckResults = {
+                totalClaims: claimsToCheck.length,
+                checkedClaims: factCheck.data.results?.length || 0,
+                results:
+                  (factCheck.data as FactCheckData).results?.map(
+                    (r: FactCheckResult) => ({
+                      claim: r.claim,
+                      status: r.status,
+                      confidence: r.confidence,
+                      analysis: r.analysis,
+                      sources: r.sources || [],
+                      error: r.error,
+                    })
+                  ) || [],
+                summary: (factCheck.data as FactCheckData).summary || {
+                  verifiedTrue: 0,
+                  verifiedFalse: 0,
+                  misleading: 0,
+                  unverifiable: 0,
+                  needsVerification: 0,
+                },
+              };
+
+              console.log("📋 Final fact-check results:", factCheckResults);
+            } else {
+              console.warn(
+                "❌ Fact-check failed or returned no data:",
+                factCheck
+              );
+
+              // Create a fallback fact-check result
+              factCheckResults = {
+                totalClaims: claimsToCheck.length,
+                checkedClaims: 0,
+                results: claimsToCheck.map((claim: string) => ({
+                  claim,
+                  status: "requires_verification",
+                  confidence: 0.5,
+                  analysis:
+                    "Automatic fact-checking failed. Manual verification recommended.",
+                  sources: [],
+                  error: "Fact-checking service temporarily unavailable",
+                })),
+                summary: {
+                  verifiedTrue: 0,
+                  verifiedFalse: 0,
+                  misleading: 0,
+                  unverifiable: 0,
+                  needsVerification: claimsToCheck.length,
+                },
+              };
+
+              console.log(
+                "🔄 Using fallback fact-check results:",
+                factCheckResults
+              );
+            }
+          } else {
+            console.log("ℹ️ No fact-checking needed or no claims detected");
+          }
+        } else {
+          console.warn("❌ News detection failed:", newsDetectionResult);
+        }
+      } catch (error) {
+        console.error("💥 Fact-checking process failed:", error);
+        // Continue without fact-checking if it fails
       }
-    } catch (error) {
-      console.warn("News detection or fact-checking failed:", error);
+    } else {
+      console.log("⚠️ No transcription available for fact-checking");
     }
 
-    // Prepare response data
+    // Format the response to match the expected interface
     const responseData = {
-      transcription: transcriptionResult.data,
+      transcription: transcription || {
+        text: "",
+        segments: [],
+        language: undefined,
+      },
       metadata: {
-        title: videoTitle,
-        description: videoDescription,
-        creator,
-        originalUrl: tiktokUrl || videoUrl,
+        title: result.result.desc || "TikTok Video",
+        description: result.result.desc || "",
+        creator: result.result.author?.nickname || "Unknown",
+        originalUrl: actualTiktokUrl,
       },
       newsDetection,
       factCheck: factCheckResults,
-      requiresFactCheck: newsDetection?.hasNewsContent || false,
+      requiresFactCheck: newsDetection?.needsFactCheck || false,
     };
 
-    // Return comprehensive results
-    const response = {
+    return NextResponse.json({
       success: true,
       data: responseData,
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error("Transcription and fact-check error:", error);
+    console.error("TikTok analysis error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Processing failed",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       },
       { status: 500 }
     );

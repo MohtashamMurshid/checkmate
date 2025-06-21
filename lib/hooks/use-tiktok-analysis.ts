@@ -106,9 +106,15 @@ export function useTikTokAnalysis() {
       const analysis: TikTokAnalysisResult = await response.json();
       console.log("🔍 Full API Response:", JSON.stringify(analysis, null, 2));
       console.log("📊 Analysis Data:", analysis.data);
+      if (analysis.data?.newsDetection) {
+        console.log("📰 News Detection:", analysis.data.newsDetection);
+      }
       if (analysis.data?.factCheck) {
         console.log("✅ Fact-Check Results:", analysis.data.factCheck);
         console.log("📋 Individual Claims:", analysis.data.factCheck.results);
+        console.log("📊 Summary:", analysis.data.factCheck.summary);
+      } else {
+        console.log("❌ No fact-check results found in response");
       }
 
       // Save to database if requested and analysis was successful

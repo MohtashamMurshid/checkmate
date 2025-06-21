@@ -18,6 +18,8 @@ export const saveTikTokAnalysis = mutation({
         description: v.optional(v.string()),
         creator: v.optional(v.string()),
         originalUrl: v.string(),
+        contentType: v.optional(v.string()),
+        platform: v.optional(v.string()),
       })
     ),
     newsDetection: v.optional(

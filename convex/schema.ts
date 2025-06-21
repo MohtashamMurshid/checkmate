@@ -35,6 +35,8 @@ const schema = defineSchema({
         description: v.optional(v.string()),
         creator: v.optional(v.string()),
         originalUrl: v.string(),
+        contentType: v.optional(v.string()),
+        platform: v.optional(v.string()),
       })
     ),
 
