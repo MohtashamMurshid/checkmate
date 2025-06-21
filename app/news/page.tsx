@@ -73,23 +73,7 @@ export default function NewsPage() {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto p-4">
       {/* Main Content Feed */}
       <div className="md:col-span-2 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Home</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* This could be a "What's happening?" input */}
-            <div className="border-b pb-4">
-              <textarea
-                className="w-full bg-transparent border-none focus:ring-0 text-lg"
-                placeholder="What's happening?"
-              />
-              <div className="flex justify-end">
-                <Button>Post</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <h1 className="text-2xl font-bold">Trending News</h1>
         <AllAnalyses />
       </div>
 
