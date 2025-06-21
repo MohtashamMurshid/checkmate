@@ -57,46 +57,12 @@
 
     const btn = document.createElement("button");
     btn.id = "tt-localhost-btn";
-    btn.style.cssText = `
-      position: absolute;
-      right: 120%;
-      top: 50%;
-      transform: translateY(-50%);
-      margin-left: 10px;
-      z-index: 9999;
-      background: hsl(331.8947 97.9381% 38.0392%);
-      border: none;
-      border-radius: 12px;
-      width: 45px;
-      height: 45px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    btn.classList.add("my-tiktok-btn");
     btn.setAttribute("aria-label", "Send to localhost");
     btn.setAttribute("title", "CheckMate fact checker");
 
-    // Add hover effects
-    btn.addEventListener('mouseenter', () => {
-      btn.style.transform = 'translateY(-50%) scale(1.1)';
-      btn.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
-    });
-
-    btn.addEventListener('mouseleave', () => {
-      btn.style.transform = 'translateY(-50%) scale(1)';
-      btn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-    });
-
     const span = document.createElement("span");
-    span.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-    `;
+    span.classList.add("my-tiktok-btn-icon");
     span.innerHTML = `
 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search-check-icon lucide-search-check"><path d="m8 11 2 2 4-4"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       `;
