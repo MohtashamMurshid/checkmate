@@ -4,7 +4,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/",
-  "/api/transcribe",
+  "/api/transcribe(.*)",
   "/api/analyze-tiktok",
 ]);
 

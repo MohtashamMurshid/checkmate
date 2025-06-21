@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { useSaveTikTokAnalysis } from "./use-saved-analyses";
+import {
+  useSaveTikTokAnalysis,
+  useSaveTikTokAnalysisWithCredibility,
+} from "./use-saved-analyses";
+import { useConvexAuth } from "convex/react";
 
 interface TranscriptionData {
   text: string;
@@ -25,6 +29,7 @@ interface FactCheckSource {
   url: string;
   source: string;
   relevance: number;
+  description?: string;
 }
 
 interface FactCheckResult {
@@ -47,6 +52,7 @@ interface FactCheckData {
     unverifiable: number;
     needsVerification: number;
   };
+  sources?: FactCheckSource[];
 }
 
 interface TikTokAnalysisData {
@@ -56,10 +62,12 @@ interface TikTokAnalysisData {
     description: string;
     creator: string;
     originalUrl: string;
+    platform?: string;
   };
   newsDetection: NewsDetection | null;
   factCheck: FactCheckData | null;
   requiresFactCheck: boolean;
+  creatorCredibilityRating?: number;
 }
 
 interface TikTokAnalysisResult {
@@ -69,14 +77,17 @@ interface TikTokAnalysisResult {
 }
 
 export function useTikTokAnalysis() {
+  const { isAuthenticated } = useConvexAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<TikTokAnalysisResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTikTokAnalysis = useSaveTikTokAnalysis();
+  const saveTikTokAnalysisWithCredibility =
+    useSaveTikTokAnalysisWithCredibility();
 
   const analyzeTikTok = async (
     url: string,
-    saveToDb = true
+    saveToDb = false // Changed default to false to prevent auto-save duplicates
   ): Promise<TikTokAnalysisResult> => {
     setIsLoading(true);
     setResult(null);
@@ -85,18 +96,20 @@ export function useTikTokAnalysis() {
       // Validate social media URL format (TikTok or Twitter)
       const tiktokUrlPattern =
         /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-      const twitterUrlPattern = 
+      const twitterUrlPattern =
         /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
-      
+
       if (!tiktokUrlPattern.test(url) && !twitterUrlPattern.test(url)) {
-        throw new Error("Invalid social media URL format. Please provide a TikTok or Twitter/X URL.");
+        throw new Error(
+          "Invalid social media URL format. Please provide a TikTok or Twitter/X URL."
+        );
       }
 
       // Determine platform and set appropriate body parameter
       const isTikTok = tiktokUrlPattern.test(url);
       const isTwitter = twitterUrlPattern.test(url);
-      
-      const requestBody: any = {};
+
+      const requestBody: { tiktokUrl?: string; twitterUrl?: string } = {};
       if (isTikTok) {
         requestBody.tiktokUrl = url;
       } else if (isTwitter) {
@@ -114,54 +127,100 @@ export function useTikTokAnalysis() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to analyze ${isTikTok ? 'TikTok' : 'Twitter'} content`);
+        throw new Error(
+          errorData.error ||
+            `Failed to analyze ${isTikTok ? "TikTok" : "Twitter"} content`
+        );
       }
 
+      // const analysis: TikTokAnalysisResult = await response.json();
       const analysis: TikTokAnalysisResult = await response.json();
-      console.log("🔍 Full API Response:", JSON.stringify(analysis, null, 2));
-      console.log("📊 Analysis Data:", analysis.data);
-      if (analysis.data?.newsDetection) {
-        console.log("📰 News Detection:", analysis.data.newsDetection);
-      }
-      if (analysis.data?.factCheck) {
-        console.log("✅ Fact-Check Results:", analysis.data.factCheck);
-        console.log("📋 Individual Claims:", analysis.data.factCheck.results);
-        console.log("📊 Summary:", analysis.data.factCheck.summary);
-      } else {
-        console.log("❌ No fact-check results found in response");
-      }
+      // Removed console.log statements for API response and analysis data
+      // Removed console.log statements for newsDetection, factCheck, and summary
+      // Removed console.log for no fact-check results
 
-      // Save to database if requested and analysis was successful
-      if (saveToDb && analysis.success && analysis.data) {
+      // Auto-save is disabled by default to prevent duplicates
+      // The user can manually save from the UI if needed
+      if (saveToDb && isAuthenticated && analysis.success && analysis.data) {
         try {
           setIsSaving(true);
-          await saveTikTokAnalysis({
-            videoUrl: analysis.data.metadata.originalUrl,
-            transcription: {
-              text: analysis.data.transcription.text,
-              duration: undefined, // API doesn't return duration yet
-              language: analysis.data.transcription.language,
-            },
-            metadata: analysis.data.metadata,
-            newsDetection: analysis.data.newsDetection || undefined,
-            factCheck: analysis.data.factCheck
-              ? {
-                  ...analysis.data.factCheck,
-                  results: analysis.data.factCheck.results.map((result) => ({
-                    claim: result.claim,
-                    status: result.status,
-                    confidence: result.confidence,
-                    analysis: result.analysis,
-                    sources: result.sources?.map((s) => s.url) || [],
-                    error: result.error,
-                  })),
-                }
-              : undefined,
-            requiresFactCheck: analysis.data.requiresFactCheck,
-          });
-          console.log("✅ Analysis saved to database");
+
+          // Use enhanced save function if credibility rating is available
+          if (analysis.data.creatorCredibilityRating !== undefined) {
+            await saveTikTokAnalysisWithCredibility({
+              videoUrl: analysis.data.metadata.originalUrl,
+              transcription: {
+                text: analysis.data.transcription.text,
+                duration: undefined, // API doesn't return duration yet
+                language: analysis.data.transcription.language,
+              },
+              metadata: analysis.data.metadata,
+              newsDetection: analysis.data.newsDetection || undefined,
+              factCheck: analysis.data.factCheck
+                ? {
+                    ...analysis.data.factCheck,
+                    sources: analysis.data.factCheck.sources?.map((s) => ({
+                      title: s.title,
+                      url: s.url,
+                      source: s.source,
+                      relevance: s.relevance,
+                    })),
+                    results: (analysis.data.factCheck.results || []).map(
+                      (result) => ({
+                        claim: result.claim,
+                        status: result.status,
+                        confidence: result.confidence,
+                        analysis: result.analysis,
+                        sources: result.sources?.map((s) => s.url) || [],
+                        error: result.error,
+                      })
+                    ),
+                  }
+                : undefined,
+              requiresFactCheck: analysis.data.requiresFactCheck,
+              creatorCredibilityRating: analysis.data.creatorCredibilityRating,
+            });
+          } else {
+            // Fallback to regular save if no credibility rating
+            await saveTikTokAnalysis({
+              videoUrl: analysis.data.metadata.originalUrl,
+              transcription: {
+                text: analysis.data.transcription.text,
+                duration: undefined, // API doesn't return duration yet
+                language: analysis.data.transcription.language,
+              },
+              metadata: analysis.data.metadata,
+              newsDetection: analysis.data.newsDetection || undefined,
+              factCheck: analysis.data.factCheck
+                ? {
+                    ...analysis.data.factCheck,
+                    sources: analysis.data.factCheck.sources?.map((s) => ({
+                      title: s.title,
+                      url: s.url,
+                      source: s.source,
+                      relevance: s.relevance,
+                    })),
+                    results: (analysis.data.factCheck.results || []).map(
+                      (result) => ({
+                        claim: result.claim,
+                        status: result.status,
+                        confidence: result.confidence,
+                        analysis: result.analysis,
+                        sources: result.sources?.map((s) => s.url) || [],
+                        error: result.error,
+                      })
+                    ),
+                  }
+                : undefined,
+              requiresFactCheck: analysis.data.requiresFactCheck,
+            });
+          }
         } catch (saveError) {
-          console.warn("Failed to save analysis to database:", saveError);
+          console.error("Failed to save analysis to database:", saveError);
+          console.error(
+            "Save error details:",
+            JSON.stringify(saveError, null, 2)
+          );
           // Don't fail the entire operation if saving fails
         } finally {
           setIsSaving(false);
