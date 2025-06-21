@@ -169,7 +169,7 @@ export default function NewsPage() {
       </div>
 
       {/* Right Sidebar */}
-      <div className="fixed top-20 right-4 w-80 space-y-6 h-screen overflow-y-auto hidden md:block">
+      <div className="space-y-6 hidden md:block sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto pt-15">
         <TopCredibleSources />
         <TopMisinformationSources />
       </div>

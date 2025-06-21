@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   PlayIcon,
   LoaderIcon,
@@ -99,6 +100,13 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const handleSaveAnalysis = async () => {
     if (!result?.success || !result.data || !isAuthenticated) {
       toast.error("Cannot save analysis - please ensure you're logged in");
+      return;
+    }
+
+    // Check if already saved by the automatic save in useTikTokAnalysis hook
+    // This prevents duplicate saves
+    if (isSaved) {
+      toast.info("Analysis already saved!");
       return;
     }
 
@@ -216,7 +224,37 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   };
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-24 md:py-32 relative">
+      {/* Analysis Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <Card className="w-full max-w-md mx-auto shadow-2xl border-primary border-2 animate-in fade-in-0 zoom-in-95">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <LoaderIcon className="h-6 w-6 animate-spin" />
+                Analyzing Content...
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Progress value={70} />
+              <div className="text-base text-muted-foreground text-center">
+                <p>
+                  We are transcribing the video, detecting news content, and
+                  fact-checking claims using AI.
+                </p>
+                <p className="mt-2">
+                  This may take up to a minute for longer videos. Please don’t
+                  close this tab.
+                </p>
+                <p className="mt-4 text-xs text-gray-400">
+                  Checkmate is verifying sources, analyzing credibility, and
+                  summarizing results for you.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <div className="text-center">
         <Badge variant="secondary" className="mb-4">
           AI-Powered Fact Checking

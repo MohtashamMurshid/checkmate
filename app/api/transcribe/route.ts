@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     if (textToFactCheck && textToFactCheck.trim().length > 0) {
       if (result.result) {
         try {
-          console.log("🔍 Starting fact-checking process for the full text...");
+          // Removed console.log for starting fact-checking process
 
           // Prepare comprehensive context with content metadata
           const creator =
@@ -237,7 +237,7 @@ Please fact-check the claims from this ${
             }
           );
 
-          console.log("🔬 Fact-check result:", factCheck);
+          // Removed console.log for fact-check result
 
           if (factCheck.success && factCheck.data) {
             // Extract the simple verification result
@@ -255,11 +255,11 @@ Please fact-check the claims from this ${
               isVerified: true,
             };
 
-            console.log("✅ Verification result:", factCheckResults);
+            // Removed console.log for verification result
 
             // Calculate creator credibility rating
             try {
-              console.log("📊 Calculating creator credibility rating...");
+              // Removed console.log for calculating creator credibility rating
 
               const credibilityResult =
                 await calculateCreatorCredibilityRating.execute(
@@ -291,10 +291,7 @@ Please fact-check the claims from this ${
               if (credibilityResult.success && credibilityResult.data) {
                 creatorCredibilityRating =
                   credibilityResult.data.credibilityRating;
-                console.log(
-                  "⭐ Creator credibility rating:",
-                  creatorCredibilityRating
-                );
+                // Removed console.log for creator credibility rating
               }
             } catch (error) {
               console.warn(
@@ -318,17 +315,17 @@ Please fact-check the claims from this ${
               error: "Service unavailable",
             };
 
-            console.log("🔄 Using fallback verification:", factCheckResults);
+            // Removed console.log for using fallback verification
           }
         } catch (error) {
           console.error("💥 Fact-checking process failed:", error);
           // Continue without fact-checking if it fails
         }
       } else {
-        console.log("⚠️ No result data available for fact-checking context");
+        // Removed console.log for no result data available for fact-checking context
       }
     } else {
-      console.log("⚠️ No content available for fact-checking");
+      // Removed console.log for no content available for fact-checking
     }
 
     // Format the response to match the expected interface

@@ -310,7 +310,7 @@ export function AnalysisPage({
                     </div>
 
                     {analysis.factCheck.explanation && (
-                      <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                      <div className="bg-muted p-4 rounded-lg">
                         <p className="font-medium mb-3 text-base">Analysis:</p>
                         <div>
                           <AnalysisRenderer
@@ -409,7 +409,7 @@ export function AnalysisPage({
                         </div>
 
                         {analysisText && (
-                          <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                             <p className="font-medium mb-3 text-base">
                               Analysis:
                             </p>

@@ -371,6 +371,18 @@ export const saveTikTokAnalysis = mutation({
       throw new Error("User not found");
     }
 
+    // Check if analysis for this video URL already exists for this user
+    const existingAnalysis = await ctx.db
+      .query("tiktokAnalyses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("videoUrl"), args.videoUrl))
+      .unique();
+
+    if (existingAnalysis) {
+      // Return existing analysis ID instead of creating duplicate
+      return existingAnalysis._id;
+    }
+
     // Save the analysis
     const analysisId = await ctx.db.insert("tiktokAnalyses", {
       userId: user._id,
@@ -480,6 +492,18 @@ export const saveTikTokAnalysisWithCredibility = mutation({
       throw new Error("User not found");
     }
 
+    // Check if analysis for this video URL already exists for this user
+    const existingAnalysis = await ctx.db
+      .query("tiktokAnalyses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("videoUrl"), args.videoUrl))
+      .unique();
+
+    if (existingAnalysis) {
+      // Return existing analysis ID instead of creating duplicate
+      return existingAnalysis._id;
+    }
+
     let contentCreatorId = undefined;
 
     // Handle content creator if metadata includes creator info
@@ -582,8 +606,52 @@ export const getUserTikTokAnalyses = query({
   },
 });
 
-// Get all TikTok analyses for all users
+// Get all TikTok analyses for all users with pagination support
+export const getAllAnalysesPaginated = query({
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.string()), // cursor for pagination
+  },
+  async handler(ctx, args) {
+    const limit = args.limit || 10;
+
+    // Get all analyses, ordered by creation date (newest first)
+    let query = ctx.db.query("tiktokAnalyses").order("desc");
+
+    if (args.cursor) {
+      // Use cursor for pagination
+      query = query.filter((q) =>
+        q.lt(q.field("_creationTime"), parseInt(args.cursor!))
+      );
+    }
+
+    const results = await query.take(limit + 1); // Take one extra to check if there are more
+
+    const hasMore = results.length > limit;
+    const analyses = hasMore ? results.slice(0, limit) : results;
+    const nextCursor = hasMore
+      ? analyses[analyses.length - 1]._creationTime.toString()
+      : null;
+
+    return {
+      analyses,
+      hasMore,
+      nextCursor,
+    };
+  },
+});
+
+// Get all TikTok analyses for all users (without pagination for now)
 export const getAllAnalyses = query({
+  args: {},
+  async handler(ctx) {
+    // Get all analyses, ordered by creation date (newest first)
+    return await ctx.db.query("tiktokAnalyses").order("desc").collect();
+  },
+});
+
+// Legacy method for backward compatibility (without pagination)
+export const getAllAnalysesLegacy = query({
   args: {},
   async handler(ctx) {
     // Get all analyses, ordered by creation date (newest first)

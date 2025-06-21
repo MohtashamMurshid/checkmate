@@ -87,7 +87,7 @@ export function useTikTokAnalysis() {
 
   const analyzeTikTok = async (
     url: string,
-    saveToDb = true
+    saveToDb = false // Changed default to false to prevent auto-save duplicates
   ): Promise<TikTokAnalysisResult> => {
     setIsLoading(true);
     setResult(null);
@@ -133,39 +133,20 @@ export function useTikTokAnalysis() {
         );
       }
 
+      // const analysis: TikTokAnalysisResult = await response.json();
       const analysis: TikTokAnalysisResult = await response.json();
-      console.log("🔍 Full API Response:", JSON.stringify(analysis, null, 2));
-      console.log("📊 Analysis Data:", analysis.data);
-      if (analysis.data?.newsDetection) {
-        console.log("📰 News Detection:", analysis.data.newsDetection);
-      }
-      if (analysis.data?.factCheck) {
-        console.log("✅ Fact-Check Results:", analysis.data.factCheck);
-        console.log("📋 Individual Claims:", analysis.data.factCheck.results);
-        console.log("📊 Summary:", analysis.data.factCheck.summary);
-      } else {
-        console.log("❌ No fact-check results found in response");
-      }
+      // Removed console.log statements for API response and analysis data
+      // Removed console.log statements for newsDetection, factCheck, and summary
+      // Removed console.log for no fact-check results
 
+      // Auto-save is disabled by default to prevent duplicates
+      // The user can manually save from the UI if needed
       if (saveToDb && isAuthenticated && analysis.success && analysis.data) {
         try {
           setIsSaving(true);
 
-          // Debug save logic
-          console.log(
-            "🔍 About to save analysis, credibility rating:",
-            analysis.data.creatorCredibilityRating
-          );
-          console.log(
-            "🔍 Condition check (rating !== undefined):",
-            analysis.data.creatorCredibilityRating !== undefined
-          );
-
           // Use enhanced save function if credibility rating is available
           if (analysis.data.creatorCredibilityRating !== undefined) {
-            console.log(
-              "✅ Using enhanced save function with credibility rating"
-            );
             await saveTikTokAnalysisWithCredibility({
               videoUrl: analysis.data.metadata.originalUrl,
               transcription: {
@@ -199,14 +180,8 @@ export function useTikTokAnalysis() {
               requiresFactCheck: analysis.data.requiresFactCheck,
               creatorCredibilityRating: analysis.data.creatorCredibilityRating,
             });
-            console.log(
-              "✅ Analysis with credibility rating saved to database"
-            );
           } else {
             // Fallback to regular save if no credibility rating
-            console.log(
-              "⚠️ No credibility rating found, using regular save function"
-            );
             await saveTikTokAnalysis({
               videoUrl: analysis.data.metadata.originalUrl,
               transcription: {
@@ -239,12 +214,11 @@ export function useTikTokAnalysis() {
                 : undefined,
               requiresFactCheck: analysis.data.requiresFactCheck,
             });
-            console.log("✅ Analysis saved to database");
           }
         } catch (saveError) {
-          console.error("💥 Failed to save analysis to database:", saveError);
+          console.error("Failed to save analysis to database:", saveError);
           console.error(
-            "💥 Save error details:",
+            "Save error details:",
             JSON.stringify(saveError, null, 2)
           );
           // Don't fail the entire operation if saving fails

@@ -1,40 +1,148 @@
 import React from "react";
 
-// Component to render markdown-like analysis content in a structured way
+/**
+ * AnalysisRenderer - Enhanced component to render markdown-like analysis content
+ *
+ * Supported heading formats:
+ * - # Heading 1 (h1 - text-2xl)
+ * - ## Heading 2 (h2 - text-xl)
+ * - ### Heading 3 (h3 - text-lg)
+ * - #### Heading 4 (h4 - text-base)
+ * - ##### Heading 5 (h5 - text-sm font-medium)
+ * - ###### Heading 6 (h6 - text-sm)
+ * - **Legacy Header:** (converted to h3)
+ *
+ * Also supports:
+ * - **Bold text**
+ * - *Italic text*
+ * - `Code snippets`
+ * - [Links](https://example.com)
+ * - - Bullet points
+ * - - **Sub-headers:** with content
+ */
 export function AnalysisRenderer({ content }: { content: string }) {
   const renderContent = (text: string) => {
-    // First, handle major sections with headers
-    const sections = text.split(/\*\*([^*]+):\*\*/);
-    const result = [];
+    const lines = text.split("\n");
+    const elements = [];
+    let currentSection = [];
 
-    for (let i = 0; i < sections.length; i++) {
-      if (i === 0 && sections[i].trim()) {
-        // First section (before any headers)
-        result.push(
-          <div key={i} className="prose prose-sm max-w-none">
-            {renderParagraphs(sections[i].trim())}
-          </div>
-        );
-      } else if (i % 2 === 1) {
-        // Header
-        const header = sections[i];
-        const content = sections[i + 1] || "";
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
 
-        result.push(
-          <div key={i} className="mb-4">
-            <h4 className="font-semibold text-base mb-3 text-primary">
-              {header}
-            </h4>
-            <div className="pl-3 border-l-2 border-border">
-              {renderSectionContent(content)}
+      // Check for markdown-style headers (# ## ### etc.)
+      const headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
+      if (headerMatch) {
+        // Process any accumulated content before this header
+        if (currentSection.length > 0) {
+          elements.push(
+            <div key={`section-${i}`} className="mb-4">
+              {renderSectionContent(currentSection.join("\n"))}
             </div>
-          </div>
-        );
-        i++; // Skip the content part as we've processed it
+          );
+          currentSection = [];
+        }
+
+        // Render the header
+        const level = headerMatch[1].length;
+        const headerText = headerMatch[2];
+        elements.push(renderHeader(headerText, level, `header-${i}`));
+        continue;
       }
+
+      // Check for legacy **Header:** format
+      const legacyHeaderMatch = trimmedLine.match(/^\*\*([^*]+):\*\*$/);
+      if (legacyHeaderMatch) {
+        // Process any accumulated content before this header
+        if (currentSection.length > 0) {
+          elements.push(
+            <div key={`section-${i}`} className="mb-4">
+              {renderSectionContent(currentSection.join("\n"))}
+            </div>
+          );
+          currentSection = [];
+        }
+
+        // Render as h3 by default for legacy format
+        elements.push(
+          renderHeader(legacyHeaderMatch[1], 3, `legacy-header-${i}`)
+        );
+        continue;
+      }
+
+      // Accumulate regular content
+      currentSection.push(line);
     }
 
-    return result.length > 0 ? result : renderParagraphs(text);
+    // Process any remaining content
+    if (currentSection.length > 0) {
+      elements.push(
+        <div key="final-section" className="mb-4">
+          {renderSectionContent(currentSection.join("\n"))}
+        </div>
+      );
+    }
+
+    return elements.length > 0 ? elements : renderParagraphs(text);
+  };
+
+  const renderHeader = (text: string, level: number, key: string) => {
+    const baseClasses = "font-semibold mb-3 text-foreground";
+    const levelClasses: Record<number, string> = {
+      1: "text-2xl", // h1
+      2: "text-xl", // h2
+      3: "text-lg", // h3
+      4: "text-base", // h4
+      5: "text-sm font-medium", // h5
+      6: "text-sm", // h6
+    };
+
+    const className = `${baseClasses} ${levelClasses[level] || levelClasses[4]}`;
+
+    switch (level) {
+      case 1:
+        return (
+          <h1 key={key} className={className}>
+            {text}
+          </h1>
+        );
+      case 2:
+        return (
+          <h2 key={key} className={className}>
+            {text}
+          </h2>
+        );
+      case 3:
+        return (
+          <h3 key={key} className={className}>
+            {text}
+          </h3>
+        );
+      case 4:
+        return (
+          <h4 key={key} className={className}>
+            {text}
+          </h4>
+        );
+      case 5:
+        return (
+          <h5 key={key} className={className}>
+            {text}
+          </h5>
+        );
+      case 6:
+        return (
+          <h6 key={key} className={className}>
+            {text}
+          </h6>
+        );
+      default:
+        return (
+          <h4 key={key} className={className}>
+            {text}
+          </h4>
+        );
+    }
   };
 
   const renderSectionContent = (content: string) => {

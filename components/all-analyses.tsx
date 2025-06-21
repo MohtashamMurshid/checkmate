@@ -18,7 +18,8 @@ const TweetActions = ({ analysisId }: { analysisId: string }) => (
 );
 
 export function AllAnalyses() {
-  const analyses = useAllAnalyses();
+  const { analyses, isLoading, hasMore, isLoadingMore, loadMore } =
+    useAllAnalyses();
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -27,7 +28,7 @@ export function AllAnalyses() {
     });
   };
 
-  if (!analyses) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
@@ -104,6 +105,29 @@ export function AllAnalyses() {
             </Card>
           </Link>
         ))
+      )}
+
+      {/* Load More Button for infinite scroll */}
+      {hasMore && (
+        <div className="flex justify-center py-6">
+          <Button
+            onClick={loadMore}
+            variant="outline"
+            className="w-full max-w-xs"
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? "Loading..." : "Load More"}
+          </Button>
+        </div>
+      )}
+
+      {isLoadingMore && (
+        <div className="flex justify-center py-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-sm text-muted-foreground">Loading more...</p>
+          </div>
+        </div>
       )}
     </div>
   );
