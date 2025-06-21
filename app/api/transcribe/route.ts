@@ -8,27 +8,36 @@ import { researchAndFactCheck } from "../../../tools/fact-checking";
 interface FactCheckData {
   overallStatus: string;
   confidence: number;
-  isTrue: boolean;
-  isFalse: boolean;
+  isVerified: boolean;
   isMisleading: boolean;
   isUnverifiable: boolean;
+  reasoning: string;
   sources: Array<{
     title: string;
     url: string;
-    source: string;
-    relevance: number;
+    source?: string;
+    relevance?: number;
   }>;
   error?: string;
+  webSearchAnalysis?: {
+    summary: string;
+  };
 }
 
-interface FactCheckData {
-  results: FactCheckResult[];
-  summary: {
-    verifiedTrue: number;
-    verifiedFalse: number;
-    misleading: number;
-    unverifiable: number;
-    needsVerification: number;
+interface AnalysisResult {
+  status: string;
+  result?: {
+    type: string;
+    text?: string;
+    desc?: string;
+    author?: {
+      nickname: string;
+      unique_id?: string;
+    };
+    video?: string | null;
+    videoHD?: string | null;
+    videoWatermark?: string | null;
+    videos?: { url: string }[];
   };
 }
 
@@ -75,9 +84,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let result: any;
+    let result: AnalysisResult;
     let extractedVideoUrl = "";
-    let transcription = null;
+    let transcription: {
+      text: string;
+      segments: unknown[];
+      language: string | undefined;
+    } | null = null;
     let contentText = "";
 
     if (platform === "twitter") {
@@ -159,7 +172,7 @@ export async function POST(request: NextRequest) {
     // Try to transcribe video if available
     if (
       extractedVideoUrl &&
-      (result.result.type === "video" || platform === "twitter")
+      (result.result?.type === "video" || platform === "twitter")
     ) {
       try {
         const transcriptionResult =
@@ -177,33 +190,24 @@ export async function POST(request: NextRequest) {
     const textToFactCheck = transcription?.text || contentText;
 
     if (textToFactCheck && textToFactCheck.trim().length > 0) {
-      try {
-        console.log("🔍 Starting fact-checking process...");
+      if (result.result) {
+        try {
+          console.log("🔍 Starting fact-checking process for the full text...");
 
-        // Break down the content into key statements for fact-checking
-        const sentences = textToFactCheck
-          .split(/[.!?]+/)
-          .filter((s) => s.trim().length > 20)
-          .slice(0, 3); // Take first 3 substantial sentences
+          // Prepare comprehensive context with content metadata
+          const creator =
+            platform === "twitter"
+              ? result.result.author?.unique_id || "Unknown"
+              : result.result.author?.nickname || "Unknown";
 
-        const claimsToCheck =
-          sentences.length > 0 ? sentences : [textToFactCheck.slice(0, 500)];
+          const description =
+            platform === "twitter"
+              ? result.result.text || ""
+              : result.result.desc || "";
 
-        console.log("✅ Starting fact-check for claims:", claimsToCheck);
-
-        // Prepare comprehensive context with content metadata
-        const creator =
-          platform === "twitter"
-            ? result.result.author?.unique_id || "Unknown"
-            : result.result.author?.nickname || "Unknown";
-
-        const description =
-          platform === "twitter"
-            ? result.result.text
-            : result.result.desc || "";
-
-        const contextPrompt = `
-${platform === "twitter" ? "Twitter/X" : "TikTok"} Post Analysis Context:
+          const contextPrompt = `${
+            platform === "twitter" ? "Twitter/X" : "TikTok"
+          } Post Analysis Context:
 - Creator: ${creator}
 - ${platform === "twitter" ? "Post" : "Video"} Content: "${description}"
 - ${platform === "twitter" ? "Post" : "Video"} URL: ${actualUrl}
@@ -211,56 +215,69 @@ ${platform === "twitter" ? "Twitter/X" : "TikTok"} Post Analysis Context:
 
 ${transcription ? `Transcribed Content: "${transcription.text}"` : ""}
 
-Please fact-check the claims from this ${platform === "twitter" ? "Twitter/X post" : "TikTok video"} content, paying special attention to both the ${platform === "twitter" ? "post text" : "video description"} ${transcription ? "and the transcribed speech" : ""}. Consider the context that this is social media content that may contain opinions, personal experiences, or claims that need verification.`;
+Please fact-check the claims from this ${
+            platform === "twitter" ? "Twitter/X post" : "TikTok video"
+          } content, paying special attention to both the ${
+            platform === "twitter" ? "post text" : "video description"
+          } ${
+            transcription ? "and the transcribed speech" : ""
+          }. Consider the context that this is social media content that may contain opinions, personal experiences, or claims that need verification.`;
 
-        const factCheck = await researchAndFactCheck.execute(
-          {
-            transcription: transcription.text,
-            title: videoDescription,
-            context: `TikTok video by ${videoCreator}. Description: "${videoDescription}". Verify the factual accuracy of the content.`,
-          },
-          {
-            toolCallId: "simple-verification",
-            messages: [],
+          const factCheck = await researchAndFactCheck.execute(
+            {
+              transcription: textToFactCheck,
+              title: description,
+              context: contextPrompt,
+            },
+            {
+              toolCallId: "simple-verification",
+              messages: [],
+            }
+          );
+
+          console.log("🔬 Fact-check result:", factCheck);
+
+          if (factCheck.success && factCheck.data) {
+            // Extract the simple verification result
+            const resultData = factCheck.data as FactCheckData;
+            const contentSummary =
+              resultData.webSearchAnalysis?.summary ||
+              textToFactCheck.slice(0, 200);
+
+            factCheckResults = {
+              verdict: resultData.overallStatus || "unverifiable", // TRUE/FALSE/UNVERIFIABLE
+              confidence: Math.round((resultData.confidence || 0.5) * 100), // Convert to percentage
+              explanation: resultData.reasoning || "No analysis available",
+              sources: resultData.sources || [],
+              content: contentSummary,
+              isVerified: true,
+            };
+
+            console.log("✅ Verification result:", factCheckResults);
+          } else {
+            console.warn("❌ Verification failed:", factCheck);
+            const contentSummary = textToFactCheck.slice(0, 200);
+
+            // Create a fallback result
+            factCheckResults = {
+              verdict: "unverifiable",
+              confidence: 0,
+              explanation:
+                "Verification service temporarily unavailable. Manual fact-checking recommended.",
+              sources: [],
+              content: contentSummary,
+              isVerified: false,
+              error: "Service unavailable",
+            };
+
+            console.log("🔄 Using fallback verification:", factCheckResults);
           }
-        );
-
-        console.log("🔬 Fact-check result:", factCheck);
-
-        if (factCheck.success && factCheck.data) {
-          // Extract the simple verification result
-          const result = factCheck.data as FactCheckData;
-
-          factCheckResults = {
-            verdict: result.overallStatus || "unverifiable", // TRUE/FALSE/UNVERIFIABLE
-            confidence: Math.round((result.confidence || 0.5) * 100), // Convert to percentage
-            explanation: result.reasoning || "No analysis available",
-            sources: result.sources || [],
-            content: contentSummary,
-            isVerified: true,
-          };
-
-          console.log("✅ Verification result:", factCheckResults);
-        } else {
-          console.warn("❌ Verification failed:", factCheck);
-
-          // Create a fallback result
-          factCheckResults = {
-            verdict: "unverifiable",
-            confidence: 0,
-            explanation:
-              "Verification service temporarily unavailable. Manual fact-checking recommended.",
-            sources: [],
-            content: contentSummary,
-            isVerified: false,
-            error: "Service unavailable",
-          };
-
-          console.log("🔄 Using fallback verification:", factCheckResults);
+        } catch (error) {
+          console.error("💥 Fact-checking process failed:", error);
+          // Continue without fact-checking if it fails
         }
-      } catch (error) {
-        console.error("💥 Fact-checking process failed:", error);
-        // Continue without fact-checking if it fails
+      } else {
+        console.log("⚠️ No result data available for fact-checking context");
       }
     } else {
       console.log("⚠️ No content available for fact-checking");
@@ -276,16 +293,16 @@ Please fact-check the claims from this ${platform === "twitter" ? "Twitter/X pos
       metadata: {
         title:
           platform === "twitter"
-            ? result.result.text || "Twitter Post"
-            : result.result.desc || "TikTok Video",
+            ? result.result?.text || "Twitter Post"
+            : result.result?.desc || "TikTok Video",
         description:
           platform === "twitter"
-            ? result.result.text || ""
-            : result.result.desc || "",
+            ? result.result?.text || ""
+            : result.result?.desc || "",
         creator:
           platform === "twitter"
-            ? result.result.author?.unique_id || "Unknown"
-            : result.result.author?.nickname || "Unknown",
+            ? result.result?.author?.unique_id || "Unknown"
+            : result.result?.author?.nickname || "Unknown",
         originalUrl: actualUrl,
         platform: platform,
       },

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSaveTikTokAnalysis } from "./use-saved-analyses";
+import { useConvexAuth } from "convex/react";
 
 interface TranscriptionData {
   text: string;
@@ -69,6 +70,7 @@ interface TikTokAnalysisResult {
 }
 
 export function useTikTokAnalysis() {
+  const { isAuthenticated } = useConvexAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<TikTokAnalysisResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,18 +87,20 @@ export function useTikTokAnalysis() {
       // Validate social media URL format (TikTok or Twitter)
       const tiktokUrlPattern =
         /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-      const twitterUrlPattern = 
+      const twitterUrlPattern =
         /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
-      
+
       if (!tiktokUrlPattern.test(url) && !twitterUrlPattern.test(url)) {
-        throw new Error("Invalid social media URL format. Please provide a TikTok or Twitter/X URL.");
+        throw new Error(
+          "Invalid social media URL format. Please provide a TikTok or Twitter/X URL."
+        );
       }
 
       // Determine platform and set appropriate body parameter
       const isTikTok = tiktokUrlPattern.test(url);
       const isTwitter = twitterUrlPattern.test(url);
-      
-      const requestBody: any = {};
+
+      const requestBody: { tiktokUrl?: string; twitterUrl?: string } = {};
       if (isTikTok) {
         requestBody.tiktokUrl = url;
       } else if (isTwitter) {
@@ -114,7 +118,10 @@ export function useTikTokAnalysis() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to analyze ${isTikTok ? 'TikTok' : 'Twitter'} content`);
+        throw new Error(
+          errorData.error ||
+            `Failed to analyze ${isTikTok ? "TikTok" : "Twitter"} content`
+        );
       }
 
       const analysis: TikTokAnalysisResult = await response.json();
@@ -132,7 +139,7 @@ export function useTikTokAnalysis() {
       }
 
       // Save to database if requested and analysis was successful
-      if (saveToDb && analysis.success && analysis.data) {
+      if (saveToDb && isAuthenticated && analysis.success && analysis.data) {
         try {
           setIsSaving(true);
           await saveTikTokAnalysis({
