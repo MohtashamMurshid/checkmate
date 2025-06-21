@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { transcribeVideoDirectly } from "../../../tools/index";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
+import { Scraper } from "@the-convocation/twitter-scraper";
 import { researchAndFactCheck } from "../../../tools/fact-checking";
 
 // Define interfaces for proper typing
@@ -17,54 +18,149 @@ interface FactCheckData {
     source: string;
     relevance: number;
   }>;
-  credibleSourcesCount: number;
-  reasoning: string;
+  error?: string;
 }
+
+interface FactCheckData {
+  results: FactCheckResult[];
+  summary: {
+    verifiedTrue: number;
+    verifiedFalse: number;
+    misleading: number;
+    unverifiable: number;
+    needsVerification: number;
+  };
+}
+
+// Initialize Twitter scraper instance
+const twitterScraper = new Scraper();
 
 export async function POST(request: NextRequest) {
   try {
-    const { videoUrl, tiktokUrl } = await request.json();
+    const { videoUrl, tiktokUrl, twitterUrl } = await request.json();
 
-    // Validate input - either videoUrl (direct video) or tiktokUrl (TikTok URL)
-    if (!videoUrl && !tiktokUrl) {
+    // Validate input - either videoUrl (direct video), tiktokUrl (TikTok URL), or twitterUrl (Twitter URL)
+    if (!videoUrl && !tiktokUrl && !twitterUrl) {
       return NextResponse.json(
-        { success: false, error: "Either videoUrl or tiktokUrl is required" },
+        {
+          success: false,
+          error: "Either videoUrl, tiktokUrl, or twitterUrl is required",
+        },
         { status: 400 }
       );
     }
 
-    // Use tiktokUrl if provided, otherwise fall back to videoUrl
-    const actualTiktokUrl = tiktokUrl || videoUrl;
+    // Determine the platform and URL to use
+    const actualUrl = twitterUrl || tiktokUrl || videoUrl;
+    const platform = twitterUrl ? "twitter" : "tiktok";
 
-    // Validate TikTok URL format
-    const tiktokUrlPattern =
-      /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-    if (!tiktokUrlPattern.test(actualTiktokUrl)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid TikTok URL format" },
-        { status: 400 }
-      );
+    // Validate URL format based on platform
+    if (platform === "twitter") {
+      const twitterUrlPattern =
+        /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+      if (!twitterUrlPattern.test(actualUrl)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid Twitter URL format" },
+          { status: 400 }
+        );
+      }
+    } else {
+      const tiktokUrlPattern =
+        /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
+      if (!tiktokUrlPattern.test(actualUrl)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid TikTok URL format" },
+          { status: 400 }
+        );
+      }
     }
 
-    // Download TikTok content using the new API
-    const result = await Downloader(actualTiktokUrl, {
-      version: "v3", // Use the latest version
-    });
-
-    if (result.status !== "success" || !result.result) {
-      return NextResponse.json(
-        { success: false, error: "Failed to analyze TikTok video" },
-        { status: 500 }
-      );
-    }
-
-    // Get the best quality MP4 video URL for transcription
-    const extractedVideoUrl =
-      result.result.videoHD || result.result.videoWatermark || "";
+    let result: any;
+    let extractedVideoUrl = "";
     let transcription = null;
+    let contentText = "";
 
-    // If it's a video, try to transcribe it using the tool function
-    if (result.result.type === "video" && extractedVideoUrl) {
+    if (platform === "twitter") {
+      // Handle Twitter/X post
+      try {
+        // Extract tweet ID from URL
+        const tweetIdMatch = actualUrl.match(/status\/(\d+)/);
+        if (!tweetIdMatch) {
+          return NextResponse.json(
+            { success: false, error: "Could not extract tweet ID from URL" },
+            { status: 400 }
+          );
+        }
+
+        const tweetId = tweetIdMatch[1];
+        const tweet = await twitterScraper.getTweet(tweetId);
+
+        if (!tweet) {
+          return NextResponse.json(
+            { success: false, error: "Failed to fetch Twitter post" },
+            { status: 500 }
+          );
+        }
+
+        result = {
+          status: "success",
+          result: {
+            type: "tweet",
+            text: tweet.text || "",
+            desc: tweet.text || "",
+            author: {
+              nickname: tweet.username || "Unknown",
+              unique_id: tweet.username || "unknown",
+            },
+            video: null,
+            videoHD: null,
+            videoWatermark: null,
+            // Check if tweet has video content
+            ...(tweet.videos &&
+              tweet.videos.length > 0 && {
+                video: tweet.videos[0].url,
+                videoHD: tweet.videos[0].url,
+                videoWatermark: tweet.videos[0].url,
+              }),
+          },
+        };
+
+        contentText = tweet.text || "";
+
+        // If there's a video in the tweet, try to transcribe it
+        if (tweet.videos && tweet.videos.length > 0) {
+          extractedVideoUrl = tweet.videos[0].url || "";
+        }
+      } catch (error) {
+        console.error("Twitter scraping error:", error);
+        return NextResponse.json(
+          { success: false, error: "Failed to analyze Twitter post" },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Handle TikTok video (existing logic)
+      result = await Downloader(actualUrl, {
+        version: "v3",
+      });
+
+      if (result.status !== "success" || !result.result) {
+        return NextResponse.json(
+          { success: false, error: "Failed to analyze TikTok video" },
+          { status: 500 }
+        );
+      }
+
+      extractedVideoUrl =
+        result.result.videoHD || result.result.videoWatermark || "";
+      contentText = result.result.desc || "";
+    }
+
+    // Try to transcribe video if available
+    if (
+      extractedVideoUrl &&
+      (result.result.type === "video" || platform === "twitter")
+    ) {
       try {
         const transcriptionResult =
           await transcribeVideoDirectly(extractedVideoUrl);
@@ -76,31 +172,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Perform fact-checking if transcription is available
+    // Perform fact-checking if we have content (transcription or text)
     let factCheckResults = null;
+    const textToFactCheck = transcription?.text || contentText;
 
-    if (transcription && transcription.text) {
+    if (textToFactCheck && textToFactCheck.trim().length > 0) {
       try {
         console.log("🔍 Starting fact-checking process...");
 
-        // Prepare comprehensive context with video metadata
-        const videoDescription = result.result.desc || "";
-        const videoCreator = result.result.author?.nickname || "Unknown";
+        // Break down the content into key statements for fact-checking
+        const sentences = textToFactCheck
+          .split(/[.!?]+/)
+          .filter((s) => s.trim().length > 20)
+          .slice(0, 3); // Take first 3 substantial sentences
 
-        // Combine transcription and description for comprehensive analysis
-        const combinedContent =
-          `${transcription.text} ${videoDescription}`.trim();
+        const claimsToCheck =
+          sentences.length > 0 ? sentences : [textToFactCheck.slice(0, 500)];
 
-        // Use the entire content as a single comprehensive search query
-        const contentSummary =
-          combinedContent.length > 800
-            ? combinedContent.slice(0, 800) + "..."
-            : combinedContent;
+        console.log("✅ Starting fact-check for claims:", claimsToCheck);
 
-        console.log(
-          "✅ Starting comprehensive fact-check for content:",
-          contentSummary
-        );
+        // Prepare comprehensive context with content metadata
+        const creator =
+          platform === "twitter"
+            ? result.result.author?.unique_id || "Unknown"
+            : result.result.author?.nickname || "Unknown";
+
+        const description =
+          platform === "twitter"
+            ? result.result.text
+            : result.result.desc || "";
+
+        const contextPrompt = `
+${platform === "twitter" ? "Twitter/X" : "TikTok"} Post Analysis Context:
+- Creator: ${creator}
+- ${platform === "twitter" ? "Post" : "Video"} Content: "${description}"
+- ${platform === "twitter" ? "Post" : "Video"} URL: ${actualUrl}
+- Platform: ${platform === "twitter" ? "Twitter/X" : "TikTok"}
+
+${transcription ? `Transcribed Content: "${transcription.text}"` : ""}
+
+Please fact-check the claims from this ${platform === "twitter" ? "Twitter/X post" : "TikTok video"} content, paying special attention to both the ${platform === "twitter" ? "post text" : "video description"} ${transcription ? "and the transcribed speech" : ""}. Consider the context that this is social media content that may contain opinions, personal experiences, or claims that need verification.`;
 
         const factCheck = await researchAndFactCheck.execute(
           {
@@ -152,7 +263,7 @@ export async function POST(request: NextRequest) {
         // Continue without fact-checking if it fails
       }
     } else {
-      console.log("⚠️ No transcription available for fact-checking");
+      console.log("⚠️ No content available for fact-checking");
     }
 
     // Format the response to match the expected interface
@@ -163,10 +274,20 @@ export async function POST(request: NextRequest) {
         language: undefined,
       },
       metadata: {
-        title: result.result.desc || "TikTok Video",
-        description: result.result.desc || "",
-        creator: result.result.author?.nickname || "Unknown",
-        originalUrl: actualTiktokUrl,
+        title:
+          platform === "twitter"
+            ? result.result.text || "Twitter Post"
+            : result.result.desc || "TikTok Video",
+        description:
+          platform === "twitter"
+            ? result.result.text || ""
+            : result.result.desc || "",
+        creator:
+          platform === "twitter"
+            ? result.result.author?.unique_id || "Unknown"
+            : result.result.author?.nickname || "Unknown",
+        originalUrl: actualUrl,
+        platform: platform,
       },
       factCheck: factCheckResults,
       requiresFactCheck: !!factCheckResults,
@@ -177,7 +298,7 @@ export async function POST(request: NextRequest) {
       data: responseData,
     });
   } catch (error) {
-    console.error("TikTok analysis error:", error);
+    console.error("Social media analysis error:", error);
     return NextResponse.json(
       {
         success: false,
