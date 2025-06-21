@@ -77,21 +77,16 @@ async function analyzeVerificationStatus(
   if (!process.env.OPENAI_API_KEY) {
     // Fallback to basic keyword analysis if no API key
     const lowercaseContent = searchContent.toLowerCase();
-    let status = "requires_verification";
+    let status = "unverifiable";
     let confidence = 0.5;
 
     if (
-      lowercaseContent.includes("true") ||
-      lowercaseContent.includes("verified")
+      lowercaseContent.includes("verified") ||
+      lowercaseContent.includes("confirmed") ||
+      lowercaseContent.includes("accurate")
     ) {
-      status = "true";
+      status = "verified";
       confidence = 0.7;
-    } else if (
-      lowercaseContent.includes("false") ||
-      lowercaseContent.includes("debunked")
-    ) {
-      status = "false";
-      confidence = 0.8;
     } else if (lowercaseContent.includes("misleading")) {
       status = "misleading";
       confidence = 0.7;
@@ -113,14 +108,13 @@ async function analyzeVerificationStatus(
 Research Results:
 
 Based on the research evidence, determine:
-1. Verification Status: Choose ONE of: "true", "false", "misleading", "unverifiable", "requires_verification"
+1. Verification Status: Choose ONE of: "verified", "misleading", "unverifiable"
 2. Confidence Level: A number from 0.0 to 1.0 representing how confident you are in this assessment
+
 Guidelines:
-- "true": Clear evidence supports the claim
-- "false": Clear evidence contradicts the claim  
+- "verified": Clear evidence supports the claim and it is accurate
 - "misleading": Claim has some truth but lacks important context or is presented in a misleading way
 - "unverifiable": Insufficient credible evidence to make a determination
-- "requires_verification": More investigation needed
 
 Respond in this exact JSON format:
 {"status": "status_here", "confidence": 0.0}`;
@@ -136,17 +130,17 @@ Respond in this exact JSON format:
 
     try {
       const parsed = JSON.parse(responseText || "{}");
-      const status = parsed.status || "requires_verification";
+      const status = parsed.status || "unverifiable";
       const confidence = Math.max(0, Math.min(1, parsed.confidence || 0.5));
 
       return { status, confidence };
     } catch {
       // Fallback if JSON parsing fails
-      return { status: "requires_verification", confidence: 0.5 };
+      return { status: "unverifiable", confidence: 0.5 };
     }
   } catch (error) {
     console.warn(`Failed to analyze verification status for claim:`, error);
-    return { status: "requires_verification", confidence: 0.5 };
+    return { status: "unverifiable", confidence: 0.5 };
   }
 }
 
@@ -266,22 +260,21 @@ export const detectNewsContent = tool({
 });
 
 /**
- * Tool to search the web using OpenAI's web search to validate key claims from the transcription with fact-checking sources.
+ * Tool to search the web using OpenAI's web search to verify content and determine truthfulness.
  * @type {import("ai").Tool}
  */
 export const researchAndFactCheck = tool({
   description:
-    "Search the web using OpenAI's web search to validate key claims from the transcription with fact-checking sources",
+    "Search the web using OpenAI's web search to verify content and determine if it's verified, misleading, or unverifiable",
   parameters: z.object({
-    claims: z.array(z.string()).describe("Array of factual claims to verify"),
+    transcription: z.string().describe("The transcribed content to verify"),
+    title: z.string().optional().describe("The video title for context"),
     context: z
       .string()
       .optional()
       .describe("Additional context about the video content"),
   }),
-  execute: async ({ claims, context }) => {
-    const factCheckResults = [];
-
+  execute: async ({ transcription, title, context }) => {
     // Check if OpenAI API key is available
     if (!process.env.OPENAI_API_KEY) {
       return {
@@ -290,93 +283,91 @@ export const researchAndFactCheck = tool({
       };
     }
 
-    // Use context for enhanced search if provided
-    const searchContext = context ? ` Context: ${context}` : "";
+    try {
+      // Create a comprehensive fact-checking query
+      const contentToCheck = `${title ? `Title: ${title}\n` : ""}Content: ${transcription}`;
+      const searchContext = context ? ` Context: ${context}` : "";
 
-    for (const claim of claims.slice(0, 3)) {
-      // Limit to 3 claims to avoid rate limits
-      try {
-        // Create a comprehensive fact-checking query
-        const factCheckQuery = `Fact-check this claim with credible sources: "${claim}". 
-        ${searchContext}
-        
-        Please provide:
-        1. Verification status (true/false/misleading/unverifiable)
-        2. Evidence from credible sources
-        3. List credible fact-checking websites and news sources
-        4. Include URLs when possible
-        5. Explain any nuances or context`;
+      const factCheckQuery = `Fact-check and verify this content with credible sources as of ${new Date().toLocaleDateString()}, and provide the most recent information: 
+      
+      ${contentToCheck}
+      ${searchContext}
+      
+      Please provide:
+      1. Overall verification status (verified/misleading/unverifiable)
+      2. Evidence from credible sources
+      3. Credible fact-checking websites and news sources
+      4. Include URLs when possible
+      5. Explain the reasoning behind your assessment
+      
+      Format it with conclusion and summary first, then Accurate Information, then Misleading Information, then the sources as 1 section and reasoning. Highlight biases and sources that are not credible with tags.`;
 
-        // Create OpenAI client and use Responses API with web search
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+      // Create OpenAI client and use Responses API with web search
+      const client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
 
-        const response = await client.responses.create({
-          model: "gpt-4o-mini",
-          tools: [
-            {
-              type: "web_search_preview",
-            },
-          ],
-          input: factCheckQuery,
-        });
+      const response = await client.responses.create({
+        model: "gpt-4.1-mini",
+        tools: [
+          {
+            type: "web_search_preview",
+          },
+        ],
+        input: factCheckQuery,
+      });
 
-        // Extract the text content from the response
-        let searchContent = "";
-        const extractedSources: Array<{
-          title: string;
-          url: string;
-          source: string;
-          relevance: number;
-          description: string;
-        }> = [];
+      // Extract the text content from the response
+      let searchContent = "";
+      const extractedSources: Array<{
+        title: string;
+        url: string;
+        source: string;
+        relevance: number;
+        description: string;
+      }> = [];
 
-        // Process the response output according to the official API structure
-        if (response.output && Array.isArray(response.output)) {
-          for (const outputItem of response.output) {
-            if (outputItem.type === "message" && outputItem.content) {
-              for (const contentItem of outputItem.content) {
-                if (contentItem.type === "output_text") {
-                  searchContent += contentItem.text || "";
+      // Process the response output according to the official API structure
+      if (response.output && Array.isArray(response.output)) {
+        for (const outputItem of response.output) {
+          if (outputItem.type === "message" && outputItem.content) {
+            for (const contentItem of outputItem.content) {
+              if (contentItem.type === "output_text") {
+                searchContent += contentItem.text || "";
 
-                  // Extract citations from annotations
-                  if (
-                    contentItem.annotations &&
-                    Array.isArray(contentItem.annotations)
-                  ) {
-                    for (const annotation of contentItem.annotations) {
-                      if (
-                        annotation.type === "url_citation" &&
-                        annotation.url
-                      ) {
-                        try {
-                          const hostname = new URL(annotation.url).hostname;
+                // Extract citations from annotations
+                if (
+                  contentItem.annotations &&
+                  Array.isArray(contentItem.annotations)
+                ) {
+                  for (const annotation of contentItem.annotations) {
+                    if (annotation.type === "url_citation" && annotation.url) {
+                      try {
+                        const hostname = new URL(annotation.url).hostname;
 
-                          // Use LLM to evaluate domain credibility
-                          const credibilityScore =
-                            await evaluateDomainCredibility(hostname);
-                          const relevance = credibilityScore / 10;
-                          const isHighlyCredible = credibilityScore >= 8;
+                        // Use LLM to evaluate domain credibility
+                        const credibilityScore =
+                          await evaluateDomainCredibility(hostname);
+                        const relevance = credibilityScore / 10;
+                        const isHighlyCredible = credibilityScore >= 8;
 
-                          extractedSources.push({
-                            title:
-                              annotation.title ||
-                              `${isHighlyCredible ? "Credible Source" : "Web Source"} from ${hostname}`,
-                            url: annotation.url,
-                            source: hostname,
-                            relevance: relevance,
-                            description: isHighlyCredible
-                              ? "Credible news/fact-checking source from web search"
-                              : "Web source found in search results",
-                          });
-                        } catch (error) {
-                          console.warn(
-                            "Failed to process citation URL:",
-                            annotation.url,
-                            error
-                          );
-                        }
+                        extractedSources.push({
+                          title:
+                            annotation.title ||
+                            `${isHighlyCredible ? "Credible Source" : "Web Source"} from ${hostname}`,
+                          url: annotation.url,
+                          source: hostname,
+                          relevance: relevance,
+                          description: isHighlyCredible
+                            ? "Credible news/fact-checking source from web search"
+                            : "Web source found in search results",
+                        });
+                      } catch (error) {
+                        console.warn(
+                          "Failed to process citation URL:",
+                          annotation.url,
+                          error
+                        );
                       }
                     }
                   }
@@ -385,65 +376,60 @@ export const researchAndFactCheck = tool({
             }
           }
         }
+      }
 
-        // Fallback: Extract URLs from response content if no annotations found
-        if (extractedSources.length === 0 && searchContent) {
-          const urlMatches =
-            searchContent.match(/https?:\/\/[^\s\)\]\,\;]+/g) || [];
-          const uniqueUrls = new Set();
+      // Fallback: Extract URLs from response content if no annotations found
+      if (extractedSources.length === 0 && searchContent) {
+        const urlMatches =
+          searchContent.match(/https?:\/\/[^\s\)\]\,\;]+/g) || [];
+        const uniqueUrls = new Set();
 
-          for (const url of urlMatches) {
-            const cleanUrl = url.replace(/[.,;)\]]+$/, "");
+        for (const url of urlMatches) {
+          const cleanUrl = url.replace(/[.,;)\]]+$/, "");
 
-            if (!uniqueUrls.has(cleanUrl)) {
-              try {
-                const hostname = new URL(cleanUrl).hostname;
-                const credibilityScore =
-                  await evaluateDomainCredibility(hostname);
-                const relevance = credibilityScore / 10;
-                const isHighlyCredible = credibilityScore >= 8;
+          if (!uniqueUrls.has(cleanUrl)) {
+            try {
+              const hostname = new URL(cleanUrl).hostname;
+              const credibilityScore =
+                await evaluateDomainCredibility(hostname);
+              const relevance = credibilityScore / 10;
+              const isHighlyCredible = credibilityScore >= 8;
 
-                extractedSources.push({
-                  title: `${isHighlyCredible ? "Credible Source" : "Web Source"} from ${hostname}`,
-                  url: cleanUrl,
-                  source: hostname,
-                  relevance: relevance,
-                  description: isHighlyCredible
-                    ? "Credible news/fact-checking source"
-                    : "Web source found in search results",
-                });
+              extractedSources.push({
+                title: `${isHighlyCredible ? "Credible Source" : "Web Source"} from ${hostname}`,
+                url: cleanUrl,
+                source: hostname,
+                relevance: relevance,
+                description: isHighlyCredible
+                  ? "Credible news/fact-checking source"
+                  : "Web source found in search results",
+              });
 
-                uniqueUrls.add(cleanUrl);
-              } catch {
-                console.warn("Invalid URL found:", cleanUrl);
-              }
+              uniqueUrls.add(cleanUrl);
+            } catch {
+              console.warn("Invalid URL found:", cleanUrl);
             }
           }
         }
+      }
 
-        // Sort sources by relevance (credible sources first)
-        extractedSources.sort((a, b) => b.relevance - a.relevance);
+      // Sort sources by relevance (credible sources first)
+      extractedSources.sort((a, b) => b.relevance - a.relevance);
 
-        // Use LLM to analyze the verification status and confidence
-        const { status, confidence } = await analyzeVerificationStatus(
-          claim,
-          searchContent
-        );
+      // Use LLM to analyze the verification status and confidence for the overall content
+      const { status, confidence } = await analyzeVerificationStatus(
+        transcription,
+        searchContent
+      );
 
-        // Extract key terms from the claim for additional context
-        const searchTerms = claim
-          .toLowerCase()
-          .replace(/[^\w\s]/g, "")
-          .split(" ")
-          .filter((word) => word.length > 3)
-          .slice(0, 5)
-          .join(" ");
-
-        const factCheckResult = {
-          claim: claim,
-          searchTerms: searchTerms,
-          status: status,
+      return {
+        success: true,
+        data: {
+          overallStatus: status,
           confidence: confidence,
+          isVerified: status === "verified",
+          isMisleading: status === "misleading",
+          isUnverifiable: status === "unverifiable",
           webSearchAnalysis: {
             summary:
               searchContent.substring(0, 500) +
@@ -451,67 +437,46 @@ export const researchAndFactCheck = tool({
             fullAnalysis: searchContent,
             sourcesFound: extractedSources.length,
             webSourcesUsed: extractedSources.length > 0,
-            primarySources: extractedSources.slice(0, 3).map((source) => ({
+            primarySources: extractedSources.slice(0, 5).map((source) => ({
               title: source.title,
               url: source.url,
               source: source.source,
             })),
           },
           sources: extractedSources,
-          keyTopics: searchTerms.split(" "),
-          needsManualVerification: false,
-        };
-
-        factCheckResults.push(factCheckResult);
-      } catch (error) {
-        factCheckResults.push({
-          claim: claim,
-          status: "error",
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to research this claim",
-          confidence: 0,
-          sources: [],
-          keyTopics: [],
-          needsManualVerification: true,
-        });
-      }
-    }
-
-    return {
-      success: true,
-      data: {
-        totalClaims: claims.length,
-        checkedClaims: factCheckResults.length,
-        results: factCheckResults,
-        summary: {
-          verifiedTrue: factCheckResults.filter((r) => r.status === "true")
-            .length,
-          verifiedFalse: factCheckResults.filter((r) => r.status === "false")
-            .length,
-          misleading: factCheckResults.filter((r) => r.status === "misleading")
-            .length,
-          unverifiable: factCheckResults.filter(
-            (r) => r.status === "unverifiable"
+          credibleSourcesCount: extractedSources.filter(
+            (s) => s.relevance > 0.7
           ).length,
-          needsVerification: factCheckResults.filter(
-            (r) => r.status === "requires_verification"
-          ).length,
+          reasoning: searchContent,
         },
-        recommendedSources: [],
-      },
-    };
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to verify content",
+        data: {
+          overallStatus: "unverifiable",
+          confidence: 0,
+          isVerified: false,
+          isMisleading: false,
+          isUnverifiable: true,
+          sources: [],
+          credibleSourcesCount: 0,
+          reasoning: "Error occurred during verification",
+        },
+      };
+    }
   },
 });
 
 /**
- * Tool to generate a comprehensive credibility report with main claims, verification status, and sources.
+ * Tool to generate a comprehensive credibility report with verification status and sources.
  * @type {import("ai").Tool}
  */
 export const generateCredibilityReport = tool({
   description:
-    "Generate a comprehensive credibility report with main claims, verification status, and sources",
+    "Generate a comprehensive credibility report with verification status and sources",
   parameters: z.object({
     videoData: z
       .object({
@@ -523,53 +488,43 @@ export const generateCredibilityReport = tool({
     newsDetection: z
       .object({
         hasNewsContent: z.boolean(),
-        potentialClaims: z.array(z.string()),
         contentType: z.string(),
       })
       .describe("News detection results"),
     factCheckResults: z
       .object({
-        results: z.array(
+        overallStatus: z.string(),
+        confidence: z.number(),
+        isVerified: z.boolean(),
+        isMisleading: z.boolean(),
+        isUnverifiable: z.boolean(),
+        sources: z.array(
           z.object({
-            claim: z.string(),
-            status: z.string(),
-            confidence: z.number(),
-            sources: z.array(
-              z.object({
-                title: z.string(),
-                url: z.string(),
-                source: z.string(),
-                relevance: z.number(),
-              })
-            ),
+            title: z.string(),
+            url: z.string(),
+            source: z.string(),
+            relevance: z.number(),
           })
         ),
-        summary: z.object({
-          verifiedTrue: z.number(),
-          verifiedFalse: z.number(),
-          misleading: z.number(),
-          unverifiable: z.number(),
-          needsVerification: z.number(),
-        }),
+        credibleSourcesCount: z.number(),
+        reasoning: z.string(),
       })
       .describe("Fact-check results"),
   }),
   execute: async ({ videoData, newsDetection, factCheckResults }) => {
-    // Calculate overall credibility score
-    const totalClaims = factCheckResults.results.length;
-    const verifiedClaims = factCheckResults.summary.verifiedTrue;
-    const falseClaims = factCheckResults.summary.verifiedFalse;
-    const misleadingClaims = factCheckResults.summary.misleading;
-
+    // Calculate overall credibility score based on verification status
     let credibilityScore = 0.5; // Default neutral score
 
-    if (totalClaims > 0) {
-      const positiveScore = (verifiedClaims / totalClaims) * 100;
-      const negativeScore =
-        ((falseClaims + misleadingClaims) / totalClaims) * 100;
-      credibilityScore =
-        Math.max(0, Math.min(100, positiveScore - negativeScore)) / 100;
+    if (factCheckResults.isVerified) {
+      credibilityScore = 0.8 + factCheckResults.confidence * 0.2;
+    } else if (factCheckResults.isMisleading) {
+      credibilityScore = 0.3 + factCheckResults.confidence * 0.2;
+    } else if (factCheckResults.isUnverifiable) {
+      credibilityScore = 0.5;
     }
+
+    // Ensure score is within bounds
+    credibilityScore = Math.max(0, Math.min(1, credibilityScore));
 
     // Generate credibility level
     let credibilityLevel = "Unknown";
@@ -578,15 +533,6 @@ export const generateCredibilityReport = tool({
     else if (credibilityScore >= 0.4) credibilityLevel = "Medium";
     else if (credibilityScore >= 0.2) credibilityLevel = "Low-Medium";
     else credibilityLevel = "Low";
-
-    // Collect all unique sources
-    const allSources = factCheckResults.results
-      .flatMap((result) => result.sources)
-      .filter(
-        (source, index, self) =>
-          index === self.findIndex((s) => s.url === source.url)
-      )
-      .sort((a, b) => b.relevance - a.relevance);
 
     const report = {
       videoInfo: {
@@ -599,37 +545,41 @@ export const generateCredibilityReport = tool({
         level: credibilityLevel,
         hasFactualContent: newsDetection.hasNewsContent,
         contentType: newsDetection.contentType,
+        verificationStatus: factCheckResults.overallStatus,
+        confidence: factCheckResults.confidence,
       },
-      claimsAnalysis: {
-        totalClaims: newsDetection.potentialClaims.length,
-        analyzedClaims: totalClaims,
-        verificationSummary: factCheckResults.summary,
-        detailedResults: factCheckResults.results.map((result) => ({
-          claim: result.claim,
-          verificationStatus: result.status,
-          confidence: result.confidence,
-          topSources: result.sources.slice(0, 2), // Top 2 sources per claim
-        })),
+      verificationResult: {
+        status: factCheckResults.overallStatus,
+        isVerified: factCheckResults.isVerified,
+        isMisleading: factCheckResults.isMisleading,
+        isUnverifiable: factCheckResults.isUnverifiable,
+        reasoning: factCheckResults.reasoning,
       },
       sources: {
-        total: allSources.length,
-        credibleSources: allSources.filter((s) => s.relevance > 0.7),
-        allSources: allSources,
+        total: factCheckResults.sources.length,
+        credibleSources: factCheckResults.sources.filter(
+          (s) => s.relevance > 0.7
+        ),
+        credibleSourcesCount: factCheckResults.credibleSourcesCount,
+        allSources: factCheckResults.sources.sort(
+          (a, b) => b.relevance - a.relevance
+        ),
       },
       recommendations: [
         newsDetection.hasNewsContent
-          ? "This content contains factual claims that should be verified with credible sources."
+          ? "This content contains factual information that was verified against credible sources."
           : "This content appears to be primarily entertainment or opinion-based.",
-        totalClaims > 0
-          ? "Cross-reference the highlighted claims with the provided fact-checking sources."
-          : "No specific factual claims were identified for verification.",
+        factCheckResults.sources.length > 0
+          ? "Review the provided sources to understand the verification process."
+          : "Limited sources were found for verification.",
         "Always verify information from multiple credible sources before sharing.",
       ],
       flags: {
         requiresFactCheck: newsDetection.hasNewsContent,
-        hasUnverifiedClaims: factCheckResults.summary.needsVerification > 0,
-        hasMisleadingContent: factCheckResults.summary.misleading > 0,
-        hasFalseContent: factCheckResults.summary.verifiedFalse > 0,
+        isVerified: factCheckResults.isVerified,
+        isMisleadingContent: factCheckResults.isMisleading,
+        needsMoreVerification: factCheckResults.isUnverifiable,
+        hasCredibleSources: factCheckResults.credibleSourcesCount > 0,
       },
     };
 

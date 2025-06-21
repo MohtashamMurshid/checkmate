@@ -15,6 +15,8 @@ import {
   ExternalLinkIcon,
   AlertTriangleIcon,
   XCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "lucide-react";
 import { useTikTokAnalysis } from "@/lib/hooks/use-tiktok-analysis";
 
@@ -22,8 +24,143 @@ interface HeroSectionProps {
   initialUrl?: string;
 }
 
+interface FactCheckResult {
+  verdict: string;
+  confidence: number;
+  explanation: string;
+  sources: Array<{
+    title: string;
+    url: string;
+    source: string;
+    relevance?: number;
+  }>;
+  content: string;
+  isVerified: boolean;
+  error?: string;
+}
+
+// Component to render markdown-like analysis content in a structured way
+function AnalysisRenderer({ content }: { content: string }) {
+  const renderContent = (text: string) => {
+    const sections = text.split(/\*\*([^*]+):\*\*/);
+    const result = [];
+
+    for (let i = 0; i < sections.length; i++) {
+      if (i === 0 && sections[i].trim()) {
+        // First section (before any headers)
+        result.push(
+          <div key={i} className="prose prose-sm max-w-none">
+            {renderText(sections[i].trim())}
+          </div>
+        );
+      } else if (i % 2 === 1) {
+        // Header
+        const header = sections[i];
+        const content = sections[i + 1] || "";
+
+        result.push(
+          <div key={i} className="mb-4">
+            <h4 className="font-semibold text-base mb-3 text-primary">
+              {header}
+            </h4>
+            <div className="pl-3 border-l-2 border-gray-200">
+              {renderSectionContent(content)}
+            </div>
+          </div>
+        );
+        i++; // Skip the content part as we've processed it
+      }
+    }
+
+    return result;
+  };
+
+  const renderSectionContent = (content: string) => {
+    const lines = content.split("\n").filter((line) => line.trim());
+    const elements = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith("- **") && line.includes(":**")) {
+        // Sub-header with content
+        const match = line.match(/- \*\*([^*]+):\*\*(.*)/);
+        if (match) {
+          elements.push(
+            <div key={i} className="mb-3">
+              <h5 className="font-medium text-sm mb-1 text-gray-800">
+                {match[1]}
+              </h5>
+              <div className="pl-3">{renderText(match[2])}</div>
+            </div>
+          );
+        }
+      } else if (line.startsWith("- ")) {
+        // Regular bullet point
+        elements.push(
+          <div key={i} className="flex items-start gap-2 mb-2">
+            <span className="text-primary mt-1 text-xs">•</span>
+            <div className="flex-1 text-sm leading-relaxed">
+              {renderText(line.substring(2))}
+            </div>
+          </div>
+        );
+      } else if (line.trim()) {
+        // Regular paragraph
+        elements.push(
+          <div key={i} className="mb-2 text-sm leading-relaxed">
+            {renderText(line)}
+          </div>
+        );
+      }
+    }
+
+    return elements;
+  };
+
+  const renderText = (text: string) => {
+    // Handle links [text](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      // Add the link
+      parts.push(
+        <a
+          key={match.index}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:text-primary/80 underline font-medium"
+        >
+          {match[1]}
+        </a>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 1 ? parts : text;
+  };
+
+  return <div className="space-y-4">{renderContent(content)}</div>;
+}
+
 export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [url, setUrl] = useState(initialUrl);
+  const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
   const router = useRouter();
 
@@ -49,6 +186,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
 
   const handleReset = () => {
     setUrl("");
+    setIsAnalysisExpanded(false);
     reset();
   };
 
@@ -99,7 +237,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
           AI-Powered Fact Checking
         </Badge>
         <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
-          Verify TikTok Content with{" "}
+          Verify Content with{" "}
           <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             Checkmate
           </span>
@@ -242,140 +380,203 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                     )}
 
                     {/* Fact-Check Results */}
-                    {result.data.factCheck &&
-                      result.data.factCheck.results.length > 0 && (
-                        <div className="space-y-4">
-                          <h4 className="font-medium flex items-center gap-2">
-                            <ShieldCheckIcon className="h-4 w-4" />
-                            Fact-Check Results (
-                            {result.data.factCheck.checkedClaims} claims
-                            analyzed)
-                          </h4>
+                    {result.data.factCheck && (
+                      <div className="space-y-4">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <ShieldCheckIcon className="h-4 w-4" />
+                          Fact-Check Results
+                        </h4>
 
-                          {/* Summary */}
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-                            <div className="bg-green-50 p-3 rounded-lg text-center">
-                              <div className="text-lg font-bold text-green-700">
-                                {result.data.factCheck.summary.verifiedTrue}
+                        {/* Overall Verification Status */}
+                        <Card
+                          className={`border-l-4 ${
+                            (
+                              result.data
+                                .factCheck as unknown as FactCheckResult
+                            ).verdict === "true"
+                              ? "border-l-green-500"
+                              : (
+                                    result.data
+                                      .factCheck as unknown as FactCheckResult
+                                  ).verdict === "false"
+                                ? "border-l-red-500"
+                                : (
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).verdict === "misleading"
+                                  ? "border-l-yellow-500"
+                                  : "border-l-gray-500"
+                          }`}
+                        >
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-sm mb-2">
+                                    Overall Verification Status
+                                  </h5>
+                                  <p className="text-sm text-muted-foreground">
+                                    {
+                                      (
+                                        result.data
+                                          .factCheck as unknown as FactCheckResult
+                                      ).content
+                                    }
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {getStatusIcon(
+                                    (
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).verdict
+                                  )}
+                                  {getStatusBadge(
+                                    (
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).verdict
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-green-600">
-                                Verified True
-                              </div>
-                            </div>
-                            <div className="bg-red-50 p-3 rounded-lg text-center">
-                              <div className="text-lg font-bold text-red-700">
-                                {result.data.factCheck.summary.verifiedFalse}
-                              </div>
-                              <div className="text-xs text-red-600">False</div>
-                            </div>
-                            <div className="bg-yellow-50 p-3 rounded-lg text-center">
-                              <div className="text-lg font-bold text-yellow-700">
-                                {result.data.factCheck.summary.misleading}
-                              </div>
-                              <div className="text-xs text-yellow-600">
-                                Misleading
-                              </div>
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded-lg text-center">
-                              <div className="text-lg font-bold text-gray-700">
-                                {result.data.factCheck.summary.unverifiable}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Unverifiable
-                              </div>
-                            </div>
-                            <div className="bg-blue-50 p-3 rounded-lg text-center">
-                              <div className="text-lg font-bold text-blue-700">
-                                {
-                                  result.data.factCheck.summary
-                                    .needsVerification
-                                }
-                              </div>
-                              <div className="text-xs text-blue-600">
-                                Needs Review
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Individual Claims */}
-                          <div className="space-y-3">
-                            {result.data.factCheck.results.map(
-                              (factCheck, index) => (
-                                <Card
-                                  key={index}
-                                  className="border-l-4 border-l-blue-500"
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="space-y-3">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <p className="text-sm flex-1 font-medium">
-                                          Claim: &ldquo;{factCheck.claim}&rdquo;
-                                        </p>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          {getStatusIcon(factCheck.status)}
-                                          {getStatusBadge(factCheck.status)}
-                                        </div>
-                                      </div>
+                              {(
+                                result.data
+                                  .factCheck as unknown as FactCheckResult
+                              ).explanation && (
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                  <p className="font-medium mb-3 text-base">
+                                    Analysis:
+                                  </p>
+                                  <div>
+                                    {(() => {
+                                      const explanation = (
+                                        result.data
+                                          .factCheck as unknown as FactCheckResult
+                                      ).explanation;
+                                      const shouldTruncate =
+                                        explanation.length > 500;
 
-                                      {factCheck.analysis && (
-                                        <div className="bg-gray-50 p-3 rounded text-xs">
-                                          <p className="font-medium mb-1">
-                                            Analysis:
-                                          </p>
-                                          <p>
-                                            {factCheck.analysis.substring(
-                                              0,
-                                              200
-                                            )}
-                                            ...
-                                          </p>
-                                        </div>
-                                      )}
+                                      const contentToShow =
+                                        shouldTruncate && !isAnalysisExpanded
+                                          ? explanation.substring(0, 500) +
+                                            "..."
+                                          : explanation;
 
-                                      {factCheck.sources &&
-                                        factCheck.sources.length > 0 && (
-                                          <div>
-                                            <p className="text-xs font-medium mb-2">
-                                              Sources:
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {factCheck.sources
-                                                .slice(0, 3)
-                                                .map((source, sourceIndex) => (
-                                                  <Button
-                                                    key={sourceIndex}
-                                                    size="sm"
-                                                    variant="outline"
-                                                    asChild
-                                                  >
-                                                    <a
-                                                      href={source.url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-xs"
-                                                    >
-                                                      {source.source}
-                                                      <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                                                    </a>
-                                                  </Button>
-                                                ))}
-                                            </div>
-                                          </div>
+                                      return (
+                                        <AnalysisRenderer
+                                          content={contentToShow}
+                                        />
+                                      );
+                                    })()}
+                                  </div>
+                                  {(() => {
+                                    const explanation = (
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).explanation;
+
+                                    if (explanation.length <= 500) return null;
+
+                                    return (
+                                      <button
+                                        onClick={() =>
+                                          setIsAnalysisExpanded(
+                                            !isAnalysisExpanded
+                                          )
+                                        }
+                                        className="mt-4 text-primary hover:text-primary/80 font-medium transition-colors text-sm flex items-center gap-1"
+                                      >
+                                        {isAnalysisExpanded ? (
+                                          <>
+                                            <ChevronUpIcon className="h-4 w-4" />
+                                            Show less
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ChevronDownIcon className="h-4 w-4" />
+                                            Show more
+                                          </>
                                         )}
+                                      </button>
+                                    );
+                                  })()}
+                                </div>
+                              )}
 
-                                      <div className="text-xs text-muted-foreground">
-                                        Confidence:{" "}
-                                        {Math.round(factCheck.confidence * 100)}
-                                        %
-                                      </div>
+                              {(
+                                result.data
+                                  .factCheck as unknown as FactCheckResult
+                              ).sources &&
+                                (
+                                  result.data
+                                    .factCheck as unknown as FactCheckResult
+                                ).sources.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-medium mb-2">
+                                      Sources (
+                                      {
+                                        (
+                                          result.data
+                                            .factCheck as unknown as FactCheckResult
+                                        ).sources.length
+                                      }{" "}
+                                      found):
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {(
+                                        result.data
+                                          .factCheck as unknown as FactCheckResult
+                                      ).sources
+                                        .slice(0, 5)
+                                        .map((source, sourceIndex) => (
+                                          <Button
+                                            key={sourceIndex}
+                                            size="sm"
+                                            variant="outline"
+                                            asChild
+                                          >
+                                            <a
+                                              href={source.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs"
+                                            >
+                                              {source.source}
+                                              <ExternalLinkIcon className="h-3 w-3 ml-1" />
+                                            </a>
+                                          </Button>
+                                        ))}
                                     </div>
-                                  </CardContent>
-                                </Card>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      )}
+                                  </div>
+                                )}
+
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>
+                                  Confidence:{" "}
+                                  {
+                                    (
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).confidence
+                                  }
+                                  %
+                                </span>
+                                <span>
+                                  Verified:{" "}
+                                  {(
+                                    result.data
+                                      .factCheck as unknown as FactCheckResult
+                                  ).isVerified
+                                    ? "Yes"
+                                    : "No"}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
 
                     {/* Reset Button */}
                     <div className="pt-4 border-t">

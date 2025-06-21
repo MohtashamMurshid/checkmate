@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Checkmate - TikTok Fact Checker",
   description:
-    "Verify TikTok content with AI-powered fact-checking. Transcribe, analyze, and get credibility reports for social media videos.",
+    "Verify content with AI-powered fact-checking. Transcribe, analyze, and get credibility reports for social media videos.",
 };
 
 export default function RootLayout({
