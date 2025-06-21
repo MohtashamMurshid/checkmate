@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Downloader } from "@tobyg74/tiktok-api-dl";
 import { experimental_transcribe } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import OpenAI from "openai";
 
 /**
  * Helper function to transcribe a video directly from a given URL using OpenAI Whisper.
@@ -604,273 +604,6 @@ export const detectNewsContent = tool({
 });
 
 /**
- * Trust rating configuration for different source types
- */
-const SOURCE_TRUST_RATINGS = {
-  // Tier 1: Highly trusted fact-checking organizations
-  "snopes.com": { rating: 0.95, category: "fact-check", name: "Snopes" },
-  "factcheck.org": {
-    rating: 0.94,
-    category: "fact-check",
-    name: "FactCheck.org",
-  },
-  "politifact.com": {
-    rating: 0.93,
-    category: "fact-check",
-    name: "PolitiFact",
-  },
-  "reuters.com": { rating: 0.92, category: "news-agency", name: "Reuters" },
-  "apnews.com": {
-    rating: 0.92,
-    category: "news-agency",
-    name: "Associated Press",
-  },
-  "bbc.com": { rating: 0.9, category: "news-outlet", name: "BBC News" },
-
-  // Tier 2: Credible news organizations
-  "cnn.com": { rating: 0.85, category: "news-outlet", name: "CNN" },
-  "npr.org": { rating: 0.88, category: "news-outlet", name: "NPR" },
-  "washingtonpost.com": {
-    rating: 0.87,
-    category: "news-outlet",
-    name: "Washington Post",
-  },
-  "nytimes.com": {
-    rating: 0.87,
-    category: "news-outlet",
-    name: "New York Times",
-  },
-  "theguardian.com": {
-    rating: 0.85,
-    category: "news-outlet",
-    name: "The Guardian",
-  },
-
-  // Tier 3: Regional and specialized sources
-  "malaymail.com": {
-    rating: 0.75,
-    category: "regional-news",
-    name: "Malay Mail",
-  },
-  "thestar.com.my": {
-    rating: 0.75,
-    category: "regional-news",
-    name: "The Star Malaysia",
-  },
-  "channelnewsasia.com": {
-    rating: 0.8,
-    category: "regional-news",
-    name: "Channel NewsAsia",
-  },
-  "straitstimes.com": {
-    rating: 0.8,
-    category: "regional-news",
-    name: "The Straits Times",
-  },
-
-  // Default for unknown sources
-  default: { rating: 0.5, category: "unknown", name: "Unknown Source" },
-};
-
-/**
- * Extract domain from URL for trust rating lookup
- */
-function extractDomain(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname.replace(/^www\./, "");
-  } catch {
-    return "unknown";
-  }
-}
-
-/**
- * Get trust rating for a source URL
- */
-function getTrustRating(url: string) {
-  const domain = extractDomain(url);
-  return SOURCE_TRUST_RATINGS[domain] || SOURCE_TRUST_RATINGS["default"];
-}
-
-/**
- * Fetch web preview data from a URL
- */
-async function fetchWebPreview(url: string, searchQuery: string) {
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; CheckMate-FactChecker/1.0)",
-      },
-      timeout: 10000, // 10 second timeout
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const html = await response.text();
-
-    // Extract basic metadata using simple regex (could be enhanced with a proper HTML parser)
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const descriptionMatch =
-      html.match(
-        /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i
-      ) ||
-      html.match(
-        /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i
-      );
-
-    const title = titleMatch ? titleMatch[1].trim() : "No Title";
-    const description = descriptionMatch ? descriptionMatch[1].trim() : "";
-
-    // Simple relevance scoring based on search query presence
-    const content = html.toLowerCase();
-    const queryWords = searchQuery.toLowerCase().split(/\s+/);
-    const relevanceScore = queryWords.reduce((score, word) => {
-      const matches = (content.match(new RegExp(word, "g")) || []).length;
-      return score + Math.min(matches * 0.1, 0.3); // Cap per word contribution
-    }, 0);
-
-    const trustInfo = getTrustRating(url);
-
-    return {
-      title,
-      description,
-      url,
-      source: trustInfo.name,
-      trustRating: trustInfo.rating,
-      category: trustInfo.category,
-      relevance: Math.min(relevanceScore, 1.0),
-      preview: description || title,
-      fetchedAt: new Date().toISOString(),
-    };
-  } catch (error) {
-    const trustInfo = getTrustRating(url);
-    return {
-      title: `Error fetching from ${trustInfo.name}`,
-      description: `Could not fetch preview: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-      url,
-      source: trustInfo.name,
-      trustRating: Math.max(trustInfo.rating - 0.2, 0.1), // Reduce trust for failed fetches
-      category: trustInfo.category,
-      relevance: 0.1,
-      preview: "Preview unavailable",
-      fetchedAt: new Date().toISOString(),
-      error: true,
-    };
-  }
-}
-
-/**
- * Enhanced source verification with web previews and trust ratings
- */
-async function getVerifiedSources(claim: string, language: string = "en") {
-  const sources = [];
-
-  // Define fact-checking search URLs with better query encoding
-  const searchUrls = [
-    {
-      name: "Snopes",
-      url: `https://www.snopes.com/search/${encodeURIComponent(claim)}`,
-      priority: 1,
-    },
-    {
-      name: "FactCheck.org",
-      url: `https://www.factcheck.org/search/?s=${encodeURIComponent(claim)}`,
-      priority: 1,
-    },
-    {
-      name: "PolitiFact",
-      url: `https://www.politifact.com/search/?q=${encodeURIComponent(claim)}`,
-      priority: 1,
-    },
-    {
-      name: "Reuters Fact Check",
-      url: `https://www.reuters.com/news/search/?blob=${encodeURIComponent(
-        claim + " fact check"
-      )}`,
-      priority: 2,
-    },
-    {
-      name: "AP Fact Check",
-      url: `https://apnews.com/search?q=${encodeURIComponent(
-        claim + " fact check"
-      )}`,
-      priority: 2,
-    },
-  ];
-
-  // Add regional sources for non-English content
-  if (language === "zh" || claim.match(/[\u4e00-\u9fff]/)) {
-    searchUrls.push(
-      {
-        name: "Channel NewsAsia",
-        url: `https://www.channelnewsasia.com/search?q=${encodeURIComponent(
-          claim
-        )}`,
-        priority: 2,
-      },
-      {
-        name: "The Straits Times",
-        url: `https://www.straitstimes.com/search?query=${encodeURIComponent(
-          claim
-        )}`,
-        priority: 2,
-      }
-    );
-  }
-
-  // Fetch previews in parallel, limiting to top 5 sources
-  const topSources = searchUrls
-    .sort((a, b) => a.priority - b.priority)
-    .slice(0, 5);
-
-  const previewPromises = topSources.map((source) =>
-    fetchWebPreview(source.url, claim)
-  );
-
-  try {
-    const previews = await Promise.allSettled(previewPromises);
-
-    previews.forEach((result, index) => {
-      if (result.status === "fulfilled") {
-        sources.push(result.value);
-      } else {
-        // Add fallback source info even if preview failed
-        const fallbackSource = topSources[index];
-        const trustInfo = getTrustRating(fallbackSource.url);
-        sources.push({
-          title: fallbackSource.name,
-          description: "Preview could not be loaded",
-          url: fallbackSource.url,
-          source: trustInfo.name,
-          trustRating: Math.max(trustInfo.rating - 0.3, 0.1),
-          category: trustInfo.category,
-          relevance: 0.1,
-          preview: "Search results may be available",
-          fetchedAt: new Date().toISOString(),
-          error: true,
-        });
-      }
-    });
-
-    // Sort by trust rating and relevance
-    sources.sort((a, b) => {
-      const aScore = a.trustRating * 0.7 + a.relevance * 0.3;
-      const bScore = b.trustRating * 0.7 + b.relevance * 0.3;
-      return bScore - aScore;
-    });
-
-    return sources;
-  } catch (error) {
-    console.warn("Error fetching source previews:", error);
-    return [];
-  }
-}
-
-/**
  * Tool to search the web using OpenAI's web search to validate key claims from the transcription with fact-checking sources.
  * @type {import("ai").Tool}
  */
@@ -912,35 +645,71 @@ export const researchAndFactCheck = tool({
         4. Include URLs when possible
         5. Explain any nuances or context`;
 
-        // Use AI SDK with OpenAI web search model to fact-check the claim
-        const searchResponse = await generateText({
-          model: openai("gpt-4o"),
-          system:
-            "You are a professional fact-checker. Always provide evidence-based analysis with credible sources. Be thorough and objective.",
-          prompt: factCheckQuery,
-          tools: {
-            web_search: openai.tools.webSearchPreview(),
-          },
+        // Create OpenAI client and use Responses API with web search
+        const client = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
-        const searchContent = searchResponse.text || "";
+        const response = await client.responses.create({
+          model: "gpt-4o-mini",
+          tools: [
+            {
+              type: "web_search_preview",
+              search_context_size: "medium",
+            },
+          ],
+          input: factCheckQuery,
+        });
 
-        // Since AI SDK doesn't expose raw annotations, we'll simulate source extraction
-        // by looking for common patterns in the response
-        const sources: Array<{
+        const searchContent = response.output_text || "";
+
+        // Extract sources from annotations
+        const extractedSources: Array<{
           title: string;
           url: string;
           source: string;
           relevance: number;
           description: string;
         }> = [];
+        // log the response
+        console.log(extractedSources);
+
+        // Find message output with annotations
+        const messageOutput = response.output?.find(
+          (item) => item.type === "message"
+        ) as any;
+
+        if (messageOutput?.content?.[0]?.annotations) {
+          messageOutput.content[0].annotations.forEach(
+            (
+              annotation: {
+                type: string;
+                title?: string;
+                url?: string;
+              },
+              index: number
+            ) => {
+              if (annotation.type === "url_citation") {
+                extractedSources.push({
+                  title: annotation.title || `Web Source ${index + 1}`,
+                  url: annotation.url || "",
+                  source: annotation.url
+                    ? new URL(annotation.url).hostname
+                    : "Unknown",
+                  relevance: 0.9,
+                  description: "Source from web search",
+                });
+              }
+            }
+          );
+        }
 
         // Extract URLs from the response content
         const urlMatches = searchContent.match(/https?:\/\/[^\s\)]+/g) || [];
-        urlMatches.forEach((url, index) => {
+        urlMatches.forEach((url: string, index: number) => {
           try {
             const hostname = new URL(url).hostname;
-            sources.push({
+            extractedSources.push({
               title: `Source ${index + 1}`,
               url: url,
               source: hostname,
@@ -1004,39 +773,15 @@ export const researchAndFactCheck = tool({
               searchContent.substring(0, 500) +
               (searchContent.length > 500 ? "..." : ""),
             fullAnalysis: searchContent,
-            sourcesFound: sources.length,
+            sourcesFound: extractedSources.length,
+            webSourcesUsed: extractedSources.length > 0,
+            primarySources: extractedSources.slice(0, 3).map((source) => ({
+              title: source.title,
+              url: source.url,
+              source: source.source,
+            })),
           },
-          sources: [
-            ...sources,
-            // Add fallback fact-checking sources
-            {
-              title: `FactCheck.org: "${searchTerms}"`,
-              url: `https://factcheck.org/search?q=${encodeURIComponent(
-                searchTerms
-              )}`,
-              source: "FactCheck.org",
-              relevance: 0.8,
-              description: "Professional fact-checking organization",
-            },
-            {
-              title: `PolitiFact Analysis: "${searchTerms}"`,
-              url: `https://politifact.com/search/?q=${encodeURIComponent(
-                searchTerms
-              )}`,
-              source: "PolitiFact",
-              relevance: 0.8,
-              description: "Pulitzer Prize-winning fact-checking site",
-            },
-            {
-              title: `Snopes Investigation: "${searchTerms}"`,
-              url: `https://snopes.com/search/${encodeURIComponent(
-                searchTerms
-              )}`,
-              source: "Snopes",
-              relevance: 0.7,
-              description: "Long-running fact-checking and debunking site",
-            },
-          ],
+          sources: extractedSources,
           keyTopics: searchTerms.split(" "),
           needsManualVerification: false,
         };
@@ -1078,14 +823,7 @@ export const researchAndFactCheck = tool({
             (r) => r.status === "requires_verification"
           ).length,
         },
-        recommendedSources: [
-          "FactCheck.org",
-          "PolitiFact",
-          "Snopes",
-          "AP Fact Check",
-          "Reuters Fact Check",
-          "Full Fact",
-        ],
+        recommendedSources: [],
       },
     };
   },

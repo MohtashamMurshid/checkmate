@@ -179,30 +179,7 @@ export async function POST(request: NextRequest) {
               status,
               confidence,
               analysis: searchContent,
-              sources: [
-                {
-                  title: "FactCheck.org",
-                  url: `https://factcheck.org/search?q=${encodeURIComponent(
-                    claim
-                  )}`,
-                  source: "FactCheck.org",
-                  relevance: 0.8,
-                },
-                {
-                  title: "PolitiFact",
-                  url: `https://politifact.com/search/?q=${encodeURIComponent(
-                    claim
-                  )}`,
-                  source: "PolitiFact",
-                  relevance: 0.8,
-                },
-                {
-                  title: "Snopes",
-                  url: `https://snopes.com/search/${encodeURIComponent(claim)}`,
-                  source: "Snopes",
-                  relevance: 0.7,
-                },
-              ],
+              sources: [],
             });
           } catch (error) {
             factCheckResults_array.push({
