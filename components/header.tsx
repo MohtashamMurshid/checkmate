@@ -10,7 +10,7 @@ export function Header() {
   const router = useRouter();
 
   return (
-    <header className="relative border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="relative border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-[0_0_16px_2px_rgba(236,72,153,0.12)] before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:z-[-1] before:shadow-[0_2px_16px_4px_rgba(236,72,153,0.08)] dark:shadow-[0_0_24px_4px_rgba(219,39,119,0.18)] dark:before:shadow-[0_4px_32px_8px_rgba(219,39,119,0.12)]">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +26,46 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [url, setUrl] = useState(initialUrl);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
   const router = useRouter();
+  const [isVisible, setIsVisible] = useState(true);
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     setUrl(initialUrl);
   }, [initialUrl]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        } else {
+          if (entry.intersectionRatio === 0) {
+            setIsVisible(false);
+          }
+        }
+      },
+      {
+        threshold: [0, 0.1],
+        rootMargin: "100px 0px 100px 0px",
+      }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleAnalyze = async () => {
     if (!url.trim()) return;
@@ -93,25 +129,88 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   };
 
   return (
-    <section className="py-24 md:py-32">
-      <div className="text-center">
-        <Badge variant="secondary" className="mb-4">
-          AI-Powered Fact Checking
-        </Badge>
-        <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
-          Verify TikTok Content with{" "}
-          <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Checkmate
-          </span>
-        </h1>
-        <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
-          Combat misinformation with our AI-powered fact-checking tool. Paste
-          any TikTok link to get instant transcription, news detection, and
-          credibility reports with verified sources.
-        </p>
+    <section className="py-24 md:py-32 relative overflow-hidden" ref={elementRef}>
+      {/* Background parallax layer */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 -z-10"
+        style={{
+          transform: `translateY(${scrollY * 0.5}px)`,
+        }}
+      />
+      
+      <div className="text-center relative z-10">
+        {/* Badge */}
+        <div 
+          className={`transition-all duration-300 ${
+            isVisible 
+              ? 'animate-in fade-in slide-in-from-top-4' 
+              : 'opacity-0 -translate-y-4'
+          }`}
+          style={{ 
+            animationDelay: isVisible ? '0ms' : '0ms',
+            animationFillMode: 'both',
+            transform: `translateY(${scrollY * 0.1}px)`,
+          }}
+        >
+          <Badge variant="secondary" className="mb-4">
+            AI-Powered Fact Checking
+          </Badge>
+        </div>
+
+        {/* Title */}
+        <div 
+          className={`transition-all duration-300 ${
+            isVisible 
+              ? 'animate-in fade-in slide-in-from-bottom-6' 
+              : 'opacity-0 translate-y-6'
+          }`}
+          style={{ 
+            animationDelay: isVisible ? '100ms' : '0ms',
+            animationFillMode: 'both',
+            transform: `translateY(${scrollY * 0.2}px)`,
+          }}
+        >
+          <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
+            Verify TikTok Content with{" "}
+            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Checkmate
+            </span>
+          </h1>
+        </div>
+
+        {/* Description */}
+        <div 
+          className={`transition-all duration-300 ${
+            isVisible 
+              ? 'animate-in fade-in slide-in-from-top-6' 
+              : 'opacity-0 -translate-y-6'
+          }`}
+          style={{ 
+            animationDelay: isVisible ? '200ms' : '0ms',
+            animationFillMode: 'both',
+            transform: `translateY(${scrollY * 0.15}px)`,
+          }}
+        >
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+            Combat misinformation with our AI-powered fact-checking tool. Paste
+            any TikTok link to get instant transcription, news detection, and
+            credibility reports with verified sources.
+          </p>
+        </div>
 
         {/* Demo Input */}
-        <div className="mx-auto max-w-2xl space-y-4">
+        <div 
+          className={`mx-auto max-w-2xl space-y-4 transition-all duration-300 ${
+            isVisible 
+              ? 'animate-in fade-in slide-in-from-bottom-8' 
+              : 'opacity-0 translate-y-8'
+          }`}
+          style={{ 
+            animationDelay: isVisible ? '300ms' : '0ms',
+            animationFillMode: 'both',
+            transform: `translateY(${scrollY * 0.1}px)`,
+          }}
+        >
           <form
             onSubmit={handleSubmit}
             className="flex gap-3 items-center justify-center"
@@ -144,7 +243,18 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
 
         {/* Results */}
         {result && (
-          <div className="mx-auto max-w-4xl mt-8">
+          <div 
+            className={`mx-auto max-w-4xl mt-8 transition-all duration-300 ${
+              isVisible 
+                ? 'animate-in fade-in slide-in-from-bottom-8' 
+                : 'opacity-0 translate-y-8'
+            }`}
+            style={{ 
+              animationDelay: isVisible ? '400ms' : '0ms',
+              animationFillMode: 'both',
+              transform: `translateY(${scrollY * 0.05}px)`,
+            }}
+          >
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
