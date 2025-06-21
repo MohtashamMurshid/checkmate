@@ -17,15 +17,8 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Trash2, Eye, Calendar, User, Video } from "lucide-react";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
-import { ScrollArea } from "./ui/scroll-area";
+import Link from "next/link";
+import { toast } from "sonner";
 
 export function SavedAnalyses() {
   const analyses = useUserTikTokAnalyses();
@@ -37,8 +30,10 @@ export function SavedAnalyses() {
     setDeletingId(analysisId);
     try {
       await deleteAnalysis({ analysisId: analysisId as Id<"tiktokAnalyses"> });
+      toast.success("Analysis deleted successfully.");
     } catch (error) {
       console.error("Failed to delete analysis:", error);
+      toast.error("Failed to delete analysis. Please try again.");
     } finally {
       setDeletingId(null);
     }
@@ -52,21 +47,6 @@ export function SavedAnalyses() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "true":
-        return "bg-green-100 text-green-800";
-      case "false":
-        return "bg-red-100 text-red-800";
-      case "misleading":
-        return "bg-yellow-100 text-yellow-800";
-      case "unverifiable":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
   };
 
   if (!analyses) {
@@ -227,158 +207,15 @@ export function SavedAnalyses() {
 
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View Details
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[80vh]">
-                      <DialogHeader>
-                        <DialogTitle>
-                          {analysis.metadata?.title || "TikTok Analysis"}
-                        </DialogTitle>
-                        <DialogDescription>
-                          Complete analysis details and fact-checking results
-                        </DialogDescription>
-                      </DialogHeader>
-                      <ScrollArea className="max-h-[60vh]">
-                        <div className="space-y-6 pr-4">
-                          {/* Metadata */}
-                          <div>
-                            <h3 className="font-semibold mb-2">
-                              Video Information
-                            </h3>
-                            <div className="space-y-1 text-sm">
-                              {analysis.metadata?.creator && (
-                                <p>
-                                  <strong>Creator:</strong>{" "}
-                                  {analysis.metadata.creator}
-                                </p>
-                              )}
-                              {analysis.metadata?.description && (
-                                <p>
-                                  <strong>Description:</strong>{" "}
-                                  {analysis.metadata.description}
-                                </p>
-                              )}
-                              <p>
-                                <strong>Original URL:</strong>
-                                <a
-                                  href={analysis.metadata?.originalUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline ml-1"
-                                >
-                                  {analysis.metadata?.originalUrl}
-                                </a>
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Full Transcription */}
-                          {analysis.transcription?.text && (
-                            <div>
-                              <h3 className="font-semibold mb-2">
-                                Full Transcription
-                              </h3>
-                              <p className="text-sm bg-gray-50 p-3 rounded">
-                                {analysis.transcription.text}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* News Detection */}
-                          {analysis.newsDetection && (
-                            <div>
-                              <h3 className="font-semibold mb-2">
-                                News Detection
-                              </h3>
-                              <div className="space-y-2 text-sm">
-                                <p>
-                                  <strong>Content Type:</strong>{" "}
-                                  {analysis.newsDetection.contentType}
-                                </p>
-                                <p>
-                                  <strong>Confidence:</strong>{" "}
-                                  {(
-                                    analysis.newsDetection.confidence * 100
-                                  ).toFixed(1)}
-                                  %
-                                </p>
-                                {analysis.newsDetection.potentialClaims.length >
-                                  0 && (
-                                  <div>
-                                    <strong>Potential Claims:</strong>
-                                    <ul className="list-disc list-inside mt-1 space-y-1">
-                                      {analysis.newsDetection.potentialClaims.map(
-                                        (claim, idx) => (
-                                          <li key={idx} className="text-xs">
-                                            {claim}
-                                          </li>
-                                        )
-                                      )}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Detailed Fact-Check Results */}
-                          {analysis.factCheck?.results && (
-                            <div>
-                              <h3 className="font-semibold mb-2">
-                                Fact-Check Results
-                              </h3>
-                              <div className="space-y-4">
-                                {analysis.factCheck.results.map(
-                                  (result, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="border rounded p-3"
-                                    >
-                                      <div className="flex items-center justify-between mb-2">
-                                        <Badge
-                                          className={getStatusColor(
-                                            result.status
-                                          )}
-                                        >
-                                          {result.status.toUpperCase()}
-                                        </Badge>
-                                        <span className="text-xs text-gray-500">
-                                          Confidence:{" "}
-                                          {(result.confidence * 100).toFixed(1)}
-                                          %
-                                        </span>
-                                      </div>
-                                      <p className="text-sm font-medium mb-2">
-                                        {result.claim}
-                                      </p>
-                                      {result.analysis && (
-                                        <p className="text-xs text-gray-600">
-                                          {result.analysis}
-                                        </p>
-                                      )}
-                                      {result.error && (
-                                        <p className="text-xs text-red-600">
-                                          Error: {result.error}
-                                        </p>
-                                      )}
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </DialogContent>
-                  </Dialog>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/news/${analysis._id}`}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Details
+                    </Link>
+                  </Button>
 
                   <Button
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(analysis._id)}
                     disabled={deletingId === analysis._id}

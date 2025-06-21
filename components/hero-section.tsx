@@ -19,6 +19,7 @@ import {
   ChevronUpIcon,
 } from "lucide-react";
 import { useTikTokAnalysis } from "@/lib/hooks/use-tiktok-analysis";
+import { toast } from "sonner";
 
 interface HeroSectionProps {
   initialUrl?: string;
@@ -168,14 +169,28 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
     setUrl(initialUrl);
   }, [initialUrl]);
 
+  useEffect(() => {
+    if (result) {
+      if (result.success) {
+        toast.success("Analysis complete!");
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    }
+  }, [result]);
+
   const handleAnalyze = async () => {
-    if (!url.trim()) return;
+    if (!url.trim()) {
+      toast.error("Please enter a URL to analyze.");
+      return;
+    }
 
     // Update URL with query parameter
     const params = new URLSearchParams();
     params.set("link", url.trim());
     router.replace(`?${params.toString()}`);
 
+    toast.info("Starting analysis... This may take a moment.");
     await analyzeTikTok(url.trim());
   };
 
@@ -244,18 +259,16 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
         </h1>
         <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
           Combat misinformation with our AI-powered fact-checking tool. Paste
-          any TikTok link to get instant transcription, news detection, and
-          credibility reports with verified sources.
+          any TikTok/Twitter(X) link to get instant transcription, news
+          detection, and credibility reports with verified sources.
         </p>
-
-        {/* Demo Input */}
         <div className="mx-auto max-w-2xl space-y-4">
           <form
             onSubmit={handleSubmit}
             className="flex gap-3 items-center justify-center"
           >
             <Input
-              placeholder="Paste TikTok link here..."
+              placeholder="Paste TikTok/Twitter(X) link here..."
               className="flex-1 h-12 text-base min-w-0"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -276,7 +289,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
             </Button>
           </form>
           <p className="text-sm text-muted-foreground text-center">
-            Try it with any TikTok video URL to see the magic happen
+            Try it with any TikTok/Twitter(X) video URL to see the magic happen
           </p>
         </div>
 
@@ -309,24 +322,26 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                     </div>
 
                     {/* Transcription */}
-                    {result.data.transcription && (
-                      <div className="space-y-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <ShieldCheckIcon className="h-4 w-4" />
-                          Transcription
-                        </h4>
-                        <div className="p-4 bg-muted rounded-lg">
-                          <p className="text-sm leading-relaxed">
-                            &ldquo;{result.data.transcription.text}&rdquo;
-                          </p>
-                          {result.data.transcription.language && (
-                            <p className="text-xs text-muted-foreground mt-3">
-                              Language: {result.data.transcription.language}
+                    {result.data.transcription &&
+                      result.data.transcription.text &&
+                      result.data.transcription.text.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <ShieldCheckIcon className="h-4 w-4" />
+                            Transcription
+                          </h4>
+                          <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm leading-relaxed">
+                              &ldquo;{result.data.transcription.text}&rdquo;
                             </p>
-                          )}
+                            {result.data.transcription.language && (
+                              <p className="text-xs text-muted-foreground mt-3">
+                                Language: {result.data.transcription.language}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* News Detection */}
                     {result.data.newsDetection && (
