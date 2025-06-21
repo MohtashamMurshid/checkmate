@@ -82,11 +82,25 @@ export function useTikTokAnalysis() {
     setResult(null);
 
     try {
-      // Validate TikTok URL format
+      // Validate social media URL format (TikTok or Twitter)
       const tiktokUrlPattern =
         /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-      if (!tiktokUrlPattern.test(url)) {
-        throw new Error("Invalid TikTok URL format");
+      const twitterUrlPattern = 
+        /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+      
+      if (!tiktokUrlPattern.test(url) && !twitterUrlPattern.test(url)) {
+        throw new Error("Invalid social media URL format. Please provide a TikTok or Twitter/X URL.");
+      }
+
+      // Determine platform and set appropriate body parameter
+      const isTikTok = tiktokUrlPattern.test(url);
+      const isTwitter = twitterUrlPattern.test(url);
+      
+      const requestBody: any = {};
+      if (isTikTok) {
+        requestBody.tiktokUrl = url;
+      } else if (isTwitter) {
+        requestBody.twitterUrl = url;
       }
 
       // Call the transcribe API route
@@ -95,20 +109,26 @@ export function useTikTokAnalysis() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ tiktokUrl: url }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to analyze TikTok video");
+        throw new Error(errorData.error || `Failed to analyze ${isTikTok ? 'TikTok' : 'Twitter'} content`);
       }
 
       const analysis: TikTokAnalysisResult = await response.json();
       console.log("🔍 Full API Response:", JSON.stringify(analysis, null, 2));
       console.log("📊 Analysis Data:", analysis.data);
+      if (analysis.data?.newsDetection) {
+        console.log("📰 News Detection:", analysis.data.newsDetection);
+      }
       if (analysis.data?.factCheck) {
         console.log("✅ Fact-Check Results:", analysis.data.factCheck);
         console.log("📋 Individual Claims:", analysis.data.factCheck.results);
+        console.log("📊 Summary:", analysis.data.factCheck.summary);
+      } else {
+        console.log("❌ No fact-check results found in response");
       }
 
       // Save to database if requested and analysis was successful
