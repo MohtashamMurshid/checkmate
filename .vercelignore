@@ -17,5 +17,7 @@ dist
 .env.test.local
 .env.production.local
 *.swp
-*.swo 
+*.swo
+checkmate-browser-extension
+
 
