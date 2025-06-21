@@ -151,25 +151,10 @@ export const getAllAnalyses = query({
 export const getTikTokAnalysisById = query({
   args: { analysisId: v.id("tiktokAnalyses") },
   async handler(ctx, args) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    // Get the analysis
+    // Get the analysis - now public, no authorization required
     const analysis = await ctx.db.get(args.analysisId);
     if (!analysis) {
       return null;
-    }
-
-    // Get the user to verify ownership
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
-    if (!user || analysis.userId !== user._id) {
-      throw new Error("Unauthorized access");
     }
 
     return analysis;
