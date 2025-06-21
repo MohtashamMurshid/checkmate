@@ -1,7 +1,14 @@
-import { SearchCheck } from "lucide-react";
+"use client";
+
+import { SearchCheck, Newspaper } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export function Header() {
+  const router = useRouter();
+
   return (
     <header className="relative border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
@@ -12,7 +19,28 @@ export function Header() {
             </div>
             <span className="text-xl font-bold">Checkmate</span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/news")}
+            >
+              <Newspaper className="h-4 w-4 mr-2" />
+              Get News
+            </Button>
+            <ThemeToggle />
+
+            <SignedOut>
+              <SignInButton>
+                <Button variant="default" size="sm">
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+          </div>
         </div>
       </div>
     </header>
