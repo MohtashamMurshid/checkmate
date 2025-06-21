@@ -1,3 +1,5 @@
+"use client";
+
 import { FeatureStep } from "@/components/feature-step";
 import {
   LinkIcon,
@@ -70,7 +72,7 @@ const steps = [
       "Easy-to-read summary",
     ],
     isReversed: false,
-    showArrow: false,
+    showArrow: true,
   },
 ];
 

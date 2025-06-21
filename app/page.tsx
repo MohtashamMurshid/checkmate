@@ -16,13 +16,16 @@ export default async function Home({ searchParams }: HomeProps) {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
 
-      <div className="mx-auto max-w-5xl px-4 md:px-6">
-        <HeroSection initialUrl={linkParam} />
-        <HowItWorks />
-        <CTASection />
-      </div>
+      <div className="pt-16">
+        <div className="mx-auto max-w-5xl px-4 md:px-6">
+          <HeroSection initialUrl={linkParam} />
+          <HowItWorks />
+        </div>
 
-      <Footer />
+        <CTASection />
+
+        <Footer />
+      </div>
     </div>
   );
 }
