@@ -29,6 +29,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AnalysisRenderer } from "@/components/analysis-renderer";
 import { CreatorCredibilityDisplay } from "@/components/creator-credibility-display";
+import { useLanguage } from "@/components/language-provider";
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -77,6 +78,7 @@ export function AnalysisPage({
 }: {
   analysisId: Id<"tiktokAnalyses">;
 }) {
+  const { t } = useLanguage();
   const analysis = useTikTokAnalysisById(analysisId);
   const [expandedClaims, setExpandedClaims] = useState<Record<number, boolean>>(
     {}
@@ -97,10 +99,8 @@ export function AnalysisPage({
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <h1 className="text-2xl font-semibold">Loading Analysis...</h1>
-          <p className="text-muted-foreground">
-            Please wait while we fetch the details.
-          </p>
+          <h1 className="text-2xl font-semibold">{t.loadingAnalysis}</h1>
+          <p className="text-muted-foreground">{t.pleaseWait}</p>
         </div>
       </div>
     );
@@ -111,15 +111,15 @@ export function AnalysisPage({
       <div className="flex items-center justify-center h-screen text-center">
         <div>
           <h1 className="text-2xl font-semibold text-red-500 mb-4">
-            Analysis Not Found
+            {t.analysisNotFound}
           </h1>
           <p className="text-muted-foreground mb-6">
-            The requested analysis does not exist or could not be loaded.
+            {t.analysisNotFoundMessage}
           </p>
           <Button asChild>
             <Link href="/news">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to News
+              {t.backToNews}
             </Link>
           </Button>
         </div>
@@ -132,7 +132,7 @@ export function AnalysisPage({
       <Button asChild variant="outline" size="sm">
         <Link href="/news">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to All Analyses
+          {t.backToAllAnalyses}
         </Link>
       </Button>
 
@@ -141,12 +141,12 @@ export function AnalysisPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">
-              {analysis.metadata?.title || "Analysis"}
+              {analysis.metadata?.title || t.analysis}
             </CardTitle>
             <CardDescription className="flex items-center gap-4 pt-1">
               <span className="flex items-center gap-1.5">
                 <User className="h-4 w-4" />
-                {analysis.metadata?.creator || "Unknown Creator"}
+                {analysis.metadata?.creator || t.unknownCreator}
               </span>
               {analysis.metadata?.platform && (
                 <Badge variant="secondary" className="text-xs">
@@ -165,7 +165,8 @@ export function AnalysisPage({
             {analysis.metadata?.description &&
               analysis.metadata.description !== analysis.metadata.title && (
                 <div className="mb-4 text-sm text-muted-foreground">
-                  <strong>Description:</strong> {analysis.metadata.description}
+                  <strong>{t.description}:</strong>{" "}
+                  {analysis.metadata.description}
                 </div>
               )}
 
@@ -187,7 +188,7 @@ export function AnalysisPage({
                 rel="noopener noreferrer"
                 className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
               >
-                View Original Video <ExternalLink className="h-3 w-3" />
+                {t.viewOriginalVideo} <ExternalLink className="h-3 w-3" />
               </a>
 
               {analysis.metadata?.creator && analysis.metadata?.platform && (
@@ -196,7 +197,7 @@ export function AnalysisPage({
                     href={`/creator/${encodeURIComponent(analysis.metadata.creator)}?platform=${analysis.metadata.platform}`}
                   >
                     <User className="h-4 w-4 mr-2" />
-                    View Author
+                    {t.viewAuthor}
                   </Link>
                 </Button>
               )}
@@ -211,7 +212,7 @@ export function AnalysisPage({
             <div className="space-y-3">
               <h4 className="font-medium flex items-center gap-2 text-lg">
                 <ShieldCheckIcon className="h-5 w-5" />
-                Transcription
+                {t.transcription}
               </h4>
               <div className="p-4 bg-muted rounded-lg">
                 <div className="text-sm leading-relaxed">
@@ -219,7 +220,7 @@ export function AnalysisPage({
                 </div>
                 {analysis.transcription.language && (
                   <p className="text-xs text-muted-foreground mt-3">
-                    Language: {analysis.transcription.language}
+                    {t.language}: {analysis.transcription.language}
                   </p>
                 )}
               </div>
@@ -231,11 +232,11 @@ export function AnalysisPage({
           <div className="space-y-3">
             <h4 className="font-medium flex items-center gap-2 text-lg">
               <AlertCircleIcon className="h-5 w-5" />
-              Content Analysis
+              {t.contentAnalysis}
             </h4>
             <div className="p-4 bg-muted rounded-lg space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Content Type:</span>
+                <span className="text-sm">{t.contentType}:</span>
                 <Badge
                   variant={
                     analysis.newsDetection.contentType === "news_factual"
@@ -248,17 +249,17 @@ export function AnalysisPage({
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Requires Fact-Check:</span>
+                <span className="text-sm">{t.requiresFactCheck}:</span>
                 <Badge
                   variant={
                     analysis.requiresFactCheck ? "destructive" : "secondary"
                   }
                 >
-                  {analysis.requiresFactCheck ? "Yes" : "No"}
+                  {analysis.requiresFactCheck ? t.yes : t.no}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Confidence:</span>
+                <span className="text-sm">{t.confidence}:</span>
                 <span className="text-sm font-medium">
                   {Math.round(analysis.newsDetection.confidence * 100)}%
                 </span>
@@ -272,7 +273,7 @@ export function AnalysisPage({
           <div className="space-y-4">
             <h4 className="font-medium flex items-center gap-2 text-lg">
               <ClipboardCheck className="h-5 w-5" />
-              Fact-Check Results
+              {t.factCheckResults}
             </h4>
 
             {/* New format with verdict, explanation, etc. */}
@@ -293,7 +294,7 @@ export function AnalysisPage({
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <h5 className="font-medium text-base mb-2">
-                          Overall Verification Status
+                          {t.overallVerificationStatus}
                         </h5>
                         {analysis.factCheck.content && (
                           <div className="text-sm text-muted-foreground mb-2">
@@ -311,7 +312,9 @@ export function AnalysisPage({
 
                     {analysis.factCheck.explanation && (
                       <div className="bg-muted p-4 rounded-lg">
-                        <p className="font-medium mb-3 text-base">Analysis:</p>
+                        <p className="font-medium mb-3 text-base">
+                          {t.analysis}:
+                        </p>
                         <div>
                           <AnalysisRenderer
                             content={analysis.factCheck.explanation}
@@ -324,7 +327,8 @@ export function AnalysisPage({
                       analysis.factCheck.sources.length > 0 && (
                         <div>
                           <p className="text-xs font-medium mb-2">
-                            Sources ({analysis.factCheck.sources.length} found):
+                            {t.sources} ({analysis.factCheck.sources.length}{" "}
+                            {t.sourcesFound}):
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {analysis.factCheck.sources
@@ -355,13 +359,13 @@ export function AnalysisPage({
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       {analysis.factCheck.confidence && (
                         <span>
-                          Confidence: {analysis.factCheck.confidence}%
+                          {t.confidence}: {analysis.factCheck.confidence}%
                         </span>
                       )}
                       {analysis.factCheck.isVerified !== undefined && (
                         <span>
-                          Verified:{" "}
-                          {analysis.factCheck.isVerified ? "Yes" : "No"}
+                          {t.verified}:{" "}
+                          {analysis.factCheck.isVerified ? t.yes : t.no}
                         </span>
                       )}
                     </div>
@@ -396,7 +400,7 @@ export function AnalysisPage({
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <h5 className="font-medium text-base mb-2">
-                              Claim:
+                              {t.claim}
                             </h5>
                             <div className="text-sm text-muted-foreground mb-2">
                               <AnalysisRenderer content={result.claim} />
@@ -411,7 +415,7 @@ export function AnalysisPage({
                         {analysisText && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                             <p className="font-medium mb-3 text-base">
-                              Analysis:
+                              {t.analysis}:
                             </p>
                             <div>
                               <AnalysisRenderer
@@ -435,12 +439,12 @@ export function AnalysisPage({
                                 {isExpanded ? (
                                   <>
                                     <ChevronUpIcon className="h-4 w-4" />
-                                    Show less
+                                    {t.showLess}
                                   </>
                                 ) : (
                                   <>
                                     <ChevronDownIcon className="h-4 w-4" />
-                                    Show more
+                                    {t.showMore}
                                   </>
                                 )}
                               </button>
@@ -451,7 +455,8 @@ export function AnalysisPage({
                         {result.sources && result.sources.length > 0 && (
                           <div>
                             <p className="text-xs font-medium mb-2">
-                              Sources ({result.sources.length} found):
+                              {t.sources} ({result.sources.length}{" "}
+                              {t.sourcesFound}):
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {result.sources
@@ -480,7 +485,8 @@ export function AnalysisPage({
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>
-                            Confidence: {Math.round(result.confidence * 100)}%
+                            {t.confidence}:{" "}
+                            {Math.round(result.confidence * 100)}%
                           </span>
                         </div>
                       </div>

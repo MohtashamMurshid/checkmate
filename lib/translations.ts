@@ -32,6 +32,7 @@ export interface Translations {
   hasNewsContent: string;
   confidence: string;
   needsFactCheck: string;
+  requiresFactCheck: string;
   contentType: string;
   factCheck: string;
   verdict: string;
@@ -122,6 +123,45 @@ export interface Translations {
   viewDetails: string;
   noCredibleSources: string;
   noMisinformationSources: string;
+
+  // Creator Page
+  highlyCredible: string;
+  moderatelyCredible: string;
+  lowCredibility: string;
+  credibilityRating: string;
+  totalAnalyses: string;
+  lastAnalyzed: string;
+  analyses: string;
+  contentAnalyses: string;
+  noAnalysesFound: string;
+  untitledVideo: string;
+  rating: string;
+  view: string;
+  communityComments: string;
+  shareThoughts: string;
+  postComment: string;
+  noCommentsYet: string;
+  anonymous: string;
+  creatorNotFound: string;
+  creatorNotFoundMessage: string;
+
+  // Analysis Page
+  loadingAnalysis: string;
+  pleaseWait: string;
+  analysisNotFound: string;
+  analysisNotFoundMessage: string;
+  backToNews: string;
+  backToAllAnalyses: string;
+  unknownCreator: string;
+  viewOriginalVideo: string;
+  viewAuthor: string;
+  language: string;
+  contentAnalysis: string;
+  factCheckResults: string;
+  overallVerificationStatus: string;
+  verifiedTrue: string;
+  needsVerification: string;
+  claim: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -135,7 +175,7 @@ export const translations: Record<Language, Translations> = {
     heroTitle: "Verify Content with Checkmate",
     heroSubtitle:
       "Paste any TikTok, X (Twitter), blog, or news URL to get instant transcription, analysis, and credibility assessment powered by advanced AI.",
-    urlPlaceholder: "Enter TikTok URL (e.g., https://vm.tiktok.com/...)",
+    urlPlaceholder: "Enter  URL (e.g., https://vm.tiktok.com/...)",
     analyzeButton: "Analyze Content",
     analyzing: "Analyzing...",
     tryAgain: "Try Again",
@@ -158,6 +198,7 @@ export const translations: Record<Language, Translations> = {
     hasNewsContent: "Has News Content",
     confidence: "Confidence",
     needsFactCheck: "Needs Fact Check",
+    requiresFactCheck: "Requires Fact-Check",
     contentType: "Content Type",
     factCheck: "Fact Check",
     verdict: "Verdict",
@@ -257,6 +298,46 @@ export const translations: Record<Language, Translations> = {
     viewDetails: "View Details",
     noCredibleSources: "No credible sources found yet",
     noMisinformationSources: "No misinformation sources found yet",
+
+    // Creator Page
+    highlyCredible: "Highly Credible",
+    moderatelyCredible: "Moderately Credible",
+    lowCredibility: "Low Credibility",
+    credibilityRating: "Credibility Rating",
+    totalAnalyses: "Total Analyses",
+    lastAnalyzed: "Last Analyzed",
+    analyses: "analyses",
+    contentAnalyses: "Content Analyses",
+    noAnalysesFound: "No analyses found for this creator yet.",
+    untitledVideo: "Untitled Video",
+    rating: "Rating",
+    view: "View",
+    communityComments: "Community Comments",
+    shareThoughts: "Share your thoughts about this creator...",
+    postComment: "Post Comment",
+    noCommentsYet: "No comments yet. Be the first to share your thoughts!",
+    anonymous: "Anonymous",
+    creatorNotFound: "Creator Not Found",
+    creatorNotFoundMessage: "could not be found.",
+
+    // Analysis Page
+    loadingAnalysis: "Loading Analysis...",
+    pleaseWait: "Please wait while we fetch the details.",
+    analysisNotFound: "Analysis Not Found",
+    analysisNotFoundMessage:
+      "The requested analysis does not exist or could not be loaded.",
+    backToNews: "Back to News",
+    backToAllAnalyses: "Back to All Analyses",
+    unknownCreator: "Unknown Creator",
+    viewOriginalVideo: "View Original Video",
+    viewAuthor: "View Author",
+    language: "Language",
+    contentAnalysis: "Content Analysis",
+    factCheckResults: "Fact-Check Results",
+    overallVerificationStatus: "Overall Verification Status",
+    verifiedTrue: "Verified True",
+    needsVerification: "Needs Verification",
+    claim: "Claim:",
   },
 
   ms: {
@@ -269,7 +350,7 @@ export const translations: Record<Language, Translations> = {
     heroTitle: "Sahkan Kandungan dengan Checkmate",
     heroSubtitle:
       "Tampalkan mana-mana URL TikTok, X (Twitter), blog, atau berita untuk mendapat transkripsi segera, analisis, dan penilaian kredibiliti dikuasakan oleh AI canggih.",
-    urlPlaceholder: "Masukkan URL TikTok (cth., https://vm.tiktok.com/...)",
+    urlPlaceholder: "Masukkan URL  (cth., https://vm.tiktok.com/...)",
     analyzeButton: "Analisis Kandungan",
     analyzing: "Menganalisis...",
     tryAgain: "Cuba Lagi",
@@ -292,6 +373,7 @@ export const translations: Record<Language, Translations> = {
     hasNewsContent: "Mempunyai Kandungan Berita",
     confidence: "Keyakinan",
     needsFactCheck: "Memerlukan Pemeriksaan Fakta",
+    requiresFactCheck: "Perlu Pemeriksaan Fakta",
     contentType: "Jenis Kandungan",
     factCheck: "Pemeriksaan Fakta",
     verdict: "Keputusan",
@@ -396,6 +478,47 @@ export const translations: Record<Language, Translations> = {
     viewDetails: "Lihat Butiran",
     noCredibleSources: "Tiada sumber boleh dipercayai ditemui lagi",
     noMisinformationSources: "Tiada sumber maklumat palsu ditemui lagi",
+
+    // Creator Page
+    highlyCredible: "Sangat Boleh Dipercayai",
+    moderatelyCredible: "Sederhana Boleh Dipercayai",
+    lowCredibility: "Kredibiliti Rendah",
+    credibilityRating: "Penilaian Kredibiliti",
+    totalAnalyses: "Jumlah Analisis",
+    lastAnalyzed: "Terakhir Dianalisis",
+    analyses: "analisis",
+    contentAnalyses: "Analisis Kandungan",
+    noAnalysesFound: "Tiada analisis ditemui untuk pencipta ini lagi.",
+    untitledVideo: "Video Tanpa Tajuk",
+    rating: "Penilaian",
+    view: "Lihat",
+    communityComments: "Komen Komuniti",
+    shareThoughts: "Kongsikan pemikiran anda tentang pencipta ini...",
+    postComment: "Hantar Komen",
+    noCommentsYet:
+      "Tiada komen lagi. Jadilah yang pertama untuk berkongsi pemikiran!",
+    anonymous: "Tanpa Nama",
+    creatorNotFound: "Pencipta Tidak Ditemui",
+    creatorNotFoundMessage: "tidak dapat ditemui.",
+
+    // Analysis Page
+    loadingAnalysis: "Memuatkan Analisis...",
+    pleaseWait: "Sila tunggu sementara kami mengambil butiran.",
+    analysisNotFound: "Analisis Tidak Ditemui",
+    analysisNotFoundMessage:
+      "Analisis yang diminta tidak wujud atau tidak dapat dimuatkan.",
+    backToNews: "Kembali ke Berita",
+    backToAllAnalyses: "Kembali ke Semua Analisis",
+    unknownCreator: "Pencipta Tidak Diketahui",
+    viewOriginalVideo: "Lihat Video Asal",
+    viewAuthor: "Lihat Pencipta",
+    language: "Bahasa",
+    contentAnalysis: "Analisis Kandungan",
+    factCheckResults: "Keputusan Pemeriksaan Fakta",
+    overallVerificationStatus: "Status Pengesahan Keseluruhan",
+    verifiedTrue: "Disahkan Benar",
+    needsVerification: "Perlu Pengesahan",
+    claim: "Dakwaan:",
   },
 
   zh: {
@@ -408,7 +531,7 @@ export const translations: Record<Language, Translations> = {
     heroTitle: "使用Checkmate验证内容",
     heroSubtitle:
       "粘贴任何TikTok、X（推特）、博客或新闻的URL，即可获得由先进AI驱动的即时转录、分析和可信度评估。",
-    urlPlaceholder: "输入TikTok URL（例如：https://vm.tiktok.com/...）",
+    urlPlaceholder: "输入 URL（例如：https://vm.tiktok.com/...）",
     analyzeButton: "分析内容",
     analyzing: "分析中...",
     tryAgain: "重试",
@@ -431,6 +554,7 @@ export const translations: Record<Language, Translations> = {
     hasNewsContent: "包含新闻内容",
     confidence: "置信度",
     needsFactCheck: "需要事实核查",
+    requiresFactCheck: "需要事实核查",
     contentType: "内容类型",
     factCheck: "事实核查",
     verdict: "裁决",
@@ -522,5 +646,44 @@ export const translations: Record<Language, Translations> = {
     viewDetails: "查看详情",
     noCredibleSources: "尚未找到可信来源",
     noMisinformationSources: "尚未找到错误信息来源",
+
+    // Creator Page
+    highlyCredible: "高度可信",
+    moderatelyCredible: "中等可信",
+    lowCredibility: "低可信度",
+    credibilityRating: "可信度评级",
+    totalAnalyses: "总分析数",
+    lastAnalyzed: "最后分析",
+    analyses: "分析",
+    contentAnalyses: "内容分析",
+    noAnalysesFound: "尚未找到此创作者的分析。",
+    untitledVideo: "无标题视频",
+    rating: "评级",
+    view: "查看",
+    communityComments: "社区评论",
+    shareThoughts: "分享您对此创作者的看法...",
+    postComment: "发表评论",
+    noCommentsYet: "还没有评论。成为第一个分享想法的人吧！",
+    anonymous: "匿名",
+    creatorNotFound: "创作者未找到",
+    creatorNotFoundMessage: "未能找到。",
+
+    // Analysis Page
+    loadingAnalysis: "加载分析...",
+    pleaseWait: "请稍候，我们正在获取详细信息。",
+    analysisNotFound: "未找到分析",
+    analysisNotFoundMessage: "请求的分析不存在或无法加载。",
+    backToNews: "返回新闻",
+    backToAllAnalyses: "返回所有分析",
+    unknownCreator: "未知创作者",
+    viewOriginalVideo: "查看原始视频",
+    viewAuthor: "查看作者",
+    language: "语言",
+    contentAnalysis: "内容分析",
+    factCheckResults: "事实核查结果",
+    overallVerificationStatus: "整体验证状态",
+    verifiedTrue: "已验证为真",
+    needsVerification: "需要验证",
+    claim: "声明：",
   },
 };
