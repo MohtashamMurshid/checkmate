@@ -32,11 +32,47 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 
 ## 👥 Team Members
 
-| Name                         | Role                                   | Contributions                                                                  |
-| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
-| **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design         |
-| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development, browser extension, backend services, API optimization  |
-| **Ayaan Izhar**              | Backend + Documentation Specialist     | Backend infrastructure, AI model integration, technical documentation, testing |
+| Name                         | Role                                   | Contributions                                                                                   |
+| ---------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design                          |
+| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development (Flutter wrapper), browser extension, backend services, API optimization |
+| **Ayaan Izhar**              | Backend + Documentation Specialist     | Backend infrastructure, AI model integration, technical documentation, testing                  |
+
+## 🚀 Local Development Setup
+
+Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/MohtashamMurshid/checkmate.git
+cd checkmate
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🔑 Environment Variables
+
+Create a `.env.local` file in the root of your project and add the following variables:
+
+```env
+VERCEL_URL=http://localhost:3000
+OPENAI_API_KEY=sk-proj-FAKEKEYFORDEMO0987654321
+CONVEX_DEPLOYMENT=dev:tidy-grouse-158 # team: mohtasham-murshid, project: checkmate-29f39
+NEXT_PUBLIC_CONVEX_URL=https://tidy-grouse-158.convex.cloud
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_FAKEPUBLISHABLEKEY
+CLERK_SECRET_KEY=sk_test_FAKESECRETKEY
+NEXT_PUBLIC_CLERK_FRONTEND_API_URL=https://magical-marmot-34.clerk.accounts.dev
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/news
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/news
+FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
+```
 
 ## 🛠️ Technologies Used
 
@@ -47,6 +83,10 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 - **Tailwind CSS** - Utility-first styling
 - **Shadcn/UI** - Modern component library
 - **React Hooks** - State management and side effects
+- **Flutter** - Cross-platform mobile wrapper for Checkmate web app  
+  _Codebase: see `@/checkmate_wrapper_checkmate_/`\_
+- **Browser Extension** - Chrome/Edge extension for real-time fact-checking overlay  
+  \_Codebase: see `@/checkmate_browser_extension/`
 
 ### Backend & Database
 
@@ -75,6 +115,10 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 - **Git/GitHub** - Version control
 - **ESLint** - Code quality and consistency
 - **PostCSS** - CSS processing
+- **Flutter** - Used for the mobile wrapper  
+  _Codebase: see `@/flutter_wrapper/`_
+- **Browser Extension** - Built for Chrome/Edge for in-browser fact-checking  
+  _Codebase: see `@/browser_extension/`_
 
 ## 🚀 Key Features & Capabilities
 
@@ -112,6 +156,14 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 - **Mobile-First Design**: Responsive across all devices
 - **Dark/Light Mode**: User preference customization
 - **Screen Reader Compatible**: WCAG accessibility standards
+
+### Mobile App Wrapper
+
+- **Mobile App Wrapper**: Access Checkmate as a native-like app on iOS/Android via Flutter
+
+### Browser Extension
+
+- **Browser Extension**: Instantly fact-check content while browsing TikTok, Twitter, or news sites
 
 ## 📱 Usage Instructions & Demo
 
@@ -434,42 +486,6 @@ components/
 - **Usage Analytics**: User behavior and feature adoption tracking
 - **Error Tracking**: Automated error detection and alerting
 
-## 🚀 Local Development Setup
-
-Clone the repo and install dependencies:
-
-```bash
-git clone https://github.com/MohtashamMurshid/checkmate.git
-cd checkmate
-npm install
-```
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 🔑 Environment Variables
-
-Create a `.env.local` file in the root of your project and add the following variables:
-
-```env
-VERCEL_URL=http://localhost:3000
-OPENAI_API_KEY=sk-proj-FAKEKEYFORDEMO0987654321
-CONVEX_DEPLOYMENT=dev:tidy-grouse-158 # team: mohtasham-murshid, project: checkmate-29f39
-NEXT_PUBLIC_CONVEX_URL=https://tidy-grouse-158.convex.cloud
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_FAKEPUBLISHABLEKEY
-CLERK_SECRET_KEY=sk_test_FAKESECRETKEY
-NEXT_PUBLIC_CLERK_FRONTEND_API_URL=https://magical-marmot-34.clerk.accounts.dev
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/news
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/news
-FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
-```
-
 ## 🏆 Impact & Future Roadmap
 
 ### Addressing the Malaysian Context
@@ -481,8 +497,8 @@ FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
 
 ### Planned Enhancements
 
-- **Browser Extension**: Real-time fact-checking while browsing
-- **Mobile App**: Native iOS/Android applications
+- **Browser Extension**: Real-time fact-checking while browsing (prototype available)
+- **Mobile App**: Native iOS/Android applications via Flutter wrapper (prototype available)
 - **API for Partners**: Integration capabilities for news organizations
 - **Advanced AI Models**: Custom-trained models for Malaysian content
 - **Blockchain Verification**: Immutable fact-check records
@@ -493,4 +509,4 @@ MIT License - Open source for educational and research purposes
 
 ---
 
-_Built with ❤️ for the Malaysia Hackathon 2024 - Fighting misinformation through technology_
+_Built with ❤️ for the ImagineHack Hackathon 2025 - Fighting misinformation through technology_
