@@ -181,22 +181,19 @@ FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
 
 #### 1. Landing Page & Hero Section
 
-![Landing Page](readme/assests/Screenshot%202025-06-22%20at%208.36.24%E2%80;AFAM.png)
+![Landing Page](readme/assests/sc-1.png)
 
 - Clean, modern landing page with a clear value proposition.
 - Explains the platform's mission to combat misinformation.
 - Clear call-to-action buttons to get started.
 
-#### 2. Content Analysis Interface
+#### 2. Browser Extension
 
-![Analysis Interface](readme/assests/Screenshot%202025-06-22%20at%208.39.52%E2%80;AFAM.png)
-
-- Simple input field for pasting URLs from TikTok, Twitter, or any website.
-- Real-time platform detection and analysis initiation.
+![Analysis Interface](readme/assests/sc-2.png)
 
 #### 3. Fact-Check Results Dashboard
 
-![Fact-Check Dashboard](readme/assests/Screenshot%202025-06-22%20at%208.42.23%E2%80;AFAM.png)
+![Fact-Check Dashboard](readme/assests/sc-3.png)
 
 - Comprehensive results display with an overall credibility score.
 - Detailed fact-check breakdown with sources and explanations.
@@ -204,79 +201,28 @@ FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
 
 #### 4. Detailed Analysis View
 
-![Detailed Analysis](readme/assests/Screenshot%202025-06-22%20at%208.44.02%E2%80;AFAM.png)
+![Detailed Analysis](readme/assests/sc-4.png)
 
 - In-depth view with full transcription, sentiment analysis, and identified claims.
 - Allows users to scrutinize the evidence and analysis process.
 
 #### 5. Creator Credibility Profile
 
-![Creator Credibility](readme/assests/Screenshot%202025-06-22%20at%208.44.29%E2%80;AFAM.png)
+![Creator Credibility](readme/assests/sc-6.png)
 
 - Historical credibility trends for content creators.
 - Analysis of past content and community feedback.
 
 #### 6. Saved Analyses & History
 
-![User Dashboard](readme/assests/Screenshot%202025-06-22%20at%208.36.54%E2%80;AFAM.png)
-
-- Personal dashboard for users to track their analysis history.
-- Option to save or bookmark important fact-checks.
-
-### Video Demo
-
-```
-[Video Demo Link: 2-3 minute walkthrough]
-- Live demonstration of analyzing a TikTok video
-- Real-time fact-checking process
-- Results interpretation and source verification
-- Mobile responsiveness showcase
-```
-
-### Live Demo Access
-
-**Demo Credentials** (for judges/reviewers):
-
-```
-URL: [Demo Platform URL]
-Test Account: demo@checkmate.ai
-Password: HackathonDemo2024
-```
-
-**Sample Content for Testing**:
-
-- TikTok Video: [Sample URL with known misinformation]
-- Twitter Post: [Sample tweet with factual claims]
-- News Article: [Sample article for credibility testing]
+![Saved Analyses](readme/assests/sc-5.png)
 
 ## 🏗️ Technical Architecture
 
 ### System Overview
 
 Checkmate follows a modern full-stack architecture with the following components:
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend       │    │   External APIs │
-│   (Next.js)     │◄──►│   (Convex)      │◄──►│   (OpenAI, etc) │
-│                 │    │                 │    │                 │
-│ • React UI      │    │ • Database      │    │ • Whisper ASR   │
-│ • TailwindCSS   │    │ • Auth (Clerk)  │    │ • GPT-4         │
-│ • TypeScript    │    │ • Functions     │    │ • TikTok API    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │   AI Tools      │
-                    │   (@/tools)     │
-                    │                 │
-                    │ • Content       │
-                    │   Analysis      │
-                    │ • Fact Checking │
-                    │ • Transcription │
-                    └─────────────────┘
-```
+![Architecture Diagram](readme/assests/sc-7.jpeg)
 
 ### Database Schema (Convex)
 
