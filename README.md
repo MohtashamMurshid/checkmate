@@ -177,54 +177,51 @@ FIRECRAWL_API_KEY=fc-FAKEKEYFORDEMO0987654321
 
 ### Demo Screenshots
 
-> **Note**: Screenshots will be added during demo preparation
+> **Note**: Screenshots are from a live demo of the platform.
 
 #### 1. Landing Page & Hero Section
 
-```
-[Screenshot: Clean, modern landing page with clear value proposition]
-- Hero section explaining the platform's mission
-- Call-to-action buttons for getting started
-- Feature highlights and statistics
-```
+![Landing Page](readme/assests/Screenshot%202025-06-22%20at%208.36.24%E2%80;AFAM.png)
+
+- Clean, modern landing page with a clear value proposition.
+- Explains the platform's mission to combat misinformation.
+- Clear call-to-action buttons to get started.
 
 #### 2. Content Analysis Interface
 
-```
-[Screenshot: Main analysis interface]
-- URL input field with platform detection
-- Real-time processing indicators
-- Progress bars for different analysis stages
-```
+![Analysis Interface](readme/assests/Screenshot%202025-06-22%20at%208.39.52%E2%80;AFAM.png)
+
+- Simple input field for pasting URLs from TikTok, Twitter, or any website.
+- Real-time platform detection and analysis initiation.
 
 #### 3. Fact-Check Results Dashboard
 
-```
-[Screenshot: Comprehensive results display]
-- Overall credibility score with visual indicators
-- Detailed fact-check breakdown
-- Source citations with credibility ratings
-- Creator credibility profile
-```
+![Fact-Check Dashboard](readme/assests/Screenshot%202025-06-22%20at%208.42.23%E2%80;AFAM.png)
 
-#### 4. Creator Credibility Profile
+- Comprehensive results display with an overall credibility score.
+- Detailed fact-check breakdown with sources and explanations.
+- Links to creator credibility profiles.
 
-```
-[Screenshot: Creator analysis page]
-- Historical credibility trends
-- Content analysis statistics
-- Community feedback and comments
-- Cross-platform credibility comparison
-```
+#### 4. Detailed Analysis View
 
-#### 5. Saved Analyses & History
+![Detailed Analysis](readme/assests/Screenshot%202025-06-22%20at%208.44.02%E2%80;AFAM.png)
 
-```
-[Screenshot: User dashboard]
-- Personal analysis history
-- Saved fact-checks and bookmarks
-- Analytics on personal verification activity
-```
+- In-depth view with full transcription, sentiment analysis, and identified claims.
+- Allows users to scrutinize the evidence and analysis process.
+
+#### 5. Creator Credibility Profile
+
+![Creator Credibility](readme/assests/Screenshot%202025-06-22%20at%208.44.29%E2%80;AFAM.png)
+
+- Historical credibility trends for content creators.
+- Analysis of past content and community feedback.
+
+#### 6. Saved Analyses & History
+
+![User Dashboard](readme/assests/Screenshot%202025-06-22%20at%208.36.54%E2%80;AFAM.png)
+
+- Personal dashboard for users to track their analysis history.
+- Option to save or bookmark important fact-checks.
 
 ### Video Demo
 
