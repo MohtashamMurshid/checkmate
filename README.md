@@ -35,7 +35,7 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 | Name                         | Role                                   | Contributions                                                                  |
 | ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
 | **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design         |
-| **Syed Amaan Jeelani**       | Mobile + Extension + Backend Developer | Mobile app development, browser extension, backend services, API optimization  |
+| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development, browser extension, backend services, API optimization  |
 | **Ayaan Izhar**              | Backend + Documentation Specialist     | Backend infrastructure, AI model integration, technical documentation, testing |
 
 ## 🛠️ Technologies Used
