@@ -11,7 +11,7 @@ _AI-Powered Misinformation Detection & Fact-Checking Platform_
 
 You can view our ImagineHack pitch deck here:
 
-👉 [Checkmate_Presentation.pdf](https://www.canva.com/design/DAGq_0eVW-U/jiqES94FGNgK5V92mGN2PA/edit?utm_content=DAGq_0eVW-U&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
+👉 [Checkmate_Presentation.canva](https://www.canva.com/design/DAGq_0eVW-U/jiqES94FGNgK5V92mGN2PA/edit?utm_content=DAGq_0eVW-U&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ## 🏆 ImagineHack Challenge & Our Approach
 
