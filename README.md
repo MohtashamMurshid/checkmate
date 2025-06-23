@@ -32,11 +32,11 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 
 ## 👥 Team Members
 
-| Name                         | Role                                   | Contributions                                                                                   |
-| ---------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design                          |
-| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development (Flutter wrapper), browser extension, backend services, API optimization |
-| **Ayaan Izhar**              | Backend + Documentation Specialist     | Backend infrastructure, AI model integration, technical documentation, testing                  |
+| Name                         | Role                                   | Contributions                                                                                                     |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------|
+| **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design                                            |
+| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development (Flutter wrapper), browser extension, backend services, API optimization                   |
+| **Ayaan Izhar**              | Backend + Documentation                |  Backend infrastructure, Sys arch Diagram, Front end dev, AI model integration, technical documentation, Ideator. |
 
 ## 🚀 Local Development Setup
 
