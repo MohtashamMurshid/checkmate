@@ -7,6 +7,11 @@ _AI-Powered Misinformation Detection & Fact-Checking Platform_
 > Combating digital misinformation in Malaysia through advanced AI, NLP, and crowd-sourced verification
 
 ---
+## 🎞️ Presentation Slides
+
+You can view our ImagineHack pitch deck here:
+
+👉 [Checkmate_Presentation.canva](https://www.canva.com/design/DAGq_0eVW-U/jiqES94FGNgK5V92mGN2PA/edit?utm_content=DAGq_0eVW-U&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ## 🏆 ImagineHack Challenge & Our Approach
 
@@ -33,10 +38,10 @@ As digital citizens, we all play a role in upholding the truth. But the scale an
 ## 👥 Team Members
 
 | Name                         | Role                                   | Contributions                                                                                   |
-| ---------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------|
 | **Mohtasham Murshid Madani** | Team Leader / Full Stack Developer     | Project architecture, AI integration, frontend development, API design                          |
-| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development (Flutter wrapper), browser extension, backend services, API optimization |
-| **Ayaan Izhar**              | Backend + Documentation Specialist     | Backend infrastructure, AI model integration, technical documentation, testing                  |
+| **Syed Amaan Geelani**       | Mobile + Extension + Backend Developer | Mobile app development (Flutter wrapper), browser extension, backend services, API optimization.|
+| **Ayaan Izhar**              | Backend + Documentation + Designer     | Backend Integration, Sys arch Diagram, , AI model integration, slides, documentation, Ideator.  |
 
 ## 🚀 Local Development Setup
 
