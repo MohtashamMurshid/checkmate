@@ -3,8 +3,10 @@
 import { useAllAnalyses } from "../lib/hooks/use-all-analyses";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { MoreHorizontal, User } from "lucide-react";
+import { MoreHorizontal, User, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Badge } from "./ui/badge";
 
 const TweetActions = ({ analysisId }: { analysisId: string }) => (
   <div className="flex justify-end items-center mt-4">
@@ -88,6 +90,30 @@ export function AllAnalyses() {
                         <span className="font-bold">
                           {analysis.metadata?.creator || "Anonymous"}
                         </span>
+                        {analysis._id ===
+                          "k97cr8dzekgww62mg1ktwkwbjd7jb6b9" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a
+                                href="https://www.rmp.gov.my/soal_selidik.html"
+                                target="_blank"
+                              >
+                                <Badge
+                                  variant="outline"
+                                  className="ml-1 border-blue-500 text-blue-500"
+                                >
+                                  <ShieldCheck className="h-3 w-3" />
+                                  Govt Verified
+                                </Badge>
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                This creator is a verified government source.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         <span className="text-sm text-muted-foreground">
                           @{analysis.metadata?.creator?.toLowerCase() || "user"}
                           · {formatDate(analysis.createdAt)}
