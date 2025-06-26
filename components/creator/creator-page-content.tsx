@@ -42,7 +42,7 @@ export const CreatorPageContent = ({ className }: CreatorPageContentProps) => {
   const platform = searchParams.get("platform") || "tiktok";
 
   // Fetch creator data
-  const creator = useQuery(api.tiktokAnalyses.getCreatorSummary, {
+  const creator = useQuery(api.tiktokAnalyses.getContentCreator, {
     creatorId,
     platform,
   });
