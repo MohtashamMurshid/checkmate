@@ -52,6 +52,47 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isMockLoading, setIsMockLoading] = useState(false);
+  const [mockResult, setMockResult] = useState<{
+    success: boolean;
+    data: {
+      transcription: {
+        text: string;
+        segments: unknown[];
+        language: string;
+      };
+      metadata: {
+        title: string;
+        description: string;
+        creator: string;
+        originalUrl: string;
+        platform: string;
+      };
+      factCheck: {
+        verdict: string;
+        confidence: number;
+        explanation: string;
+        content: string;
+        sources: Array<{
+          title: string;
+          url: string;
+          source: string;
+          relevance: number;
+        }>;
+        isVerified: boolean;
+      };
+      requiresFactCheck: boolean;
+      creatorCredibilityRating: number;
+      newsDetection: {
+        hasNewsContent: boolean;
+        confidence: number;
+        newsKeywordsFound: string[];
+        potentialClaims: number;
+        needsFactCheck: boolean;
+        contentType: string;
+      };
+    };
+  } | null>(null);
   const { analyzeTikTok, isLoading, result, reset } = useTikTokAnalysis();
   const { isAuthenticated } = useConvexAuth();
   const saveTikTokAnalysisWithCredibility =
@@ -97,7 +138,110 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
     setUrl("");
     setIsAnalysisExpanded(false);
     setIsSaved(false);
+    setMockResult(null);
     reset();
+  };
+
+  const handleMockAnalysis = async () => {
+    if (!url.trim()) {
+      toast.error(t.enterUrl);
+      return;
+    }
+
+    setIsMockLoading(true);
+    toast.info("🧪 Running Mock Analysis (Free!)");
+
+    // Simulate API processing time
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Generate realistic mock data
+    const mockData = {
+      success: true,
+      data: {
+        transcription: {
+          text: `This is a mock transcription of the content from ${url}. 
+
+The AI has simulated transcribing the audio/video content. In this mock analysis, we're demonstrating how the system would extract spoken words, identify key claims, and prepare them for fact-checking.
+
+Key simulated claims found:
+- Mock claim about current events
+- Simulated statement requiring verification
+- Example of content that would trigger fact-checking processes`,
+          segments: [],
+          language: "en",
+        },
+        metadata: {
+          title: "Mock Content Analysis - Demo Mode",
+          description:
+            "This is a simulated analysis showing how Checkmate would process real content without using expensive APIs.",
+          creator: "MockCreator123",
+          originalUrl: url,
+          platform: url.includes("tiktok")
+            ? "tiktok"
+            : url.includes("twitter")
+              ? "twitter"
+              : "web",
+        },
+        factCheck: {
+          verdict: "verified" as const,
+          confidence: 85,
+          explanation: `**Mock Fact-Check Analysis:**
+
+This is a demonstration of how our AI fact-checking system would analyze the content. In a real scenario, this would involve:
+
+**Verification Process:**
+- Web search across credible news sources
+- Cross-referencing with fact-checking databases  
+- Analysis of source credibility and bias
+- Evaluation of evidence quality
+
+**Mock Findings:**
+- **Primary Claims**: The content contains 2-3 verifiable statements
+- **Source Quality**: Simulated cross-reference with Reuters, AP News, BBC
+- **Confidence Level**: High confidence based on multiple corroborating sources
+- **Recommendation**: Content appears to be factually accurate based on available evidence
+
+**Note**: This is a demonstration using mock data to show the analysis process without incurring API costs.`,
+          content:
+            "Mock content summary: The system has analyzed the provided URL and generated this demo fact-check result to show how real analysis would work.",
+          sources: [
+            {
+              title: "Mock Reuters Article",
+              url: "https://reuters.com/mock-article",
+              source: "reuters.com",
+              relevance: 0.9,
+            },
+            {
+              title: "Mock BBC News Report",
+              url: "https://bbc.com/mock-report",
+              source: "bbc.com",
+              relevance: 0.85,
+            },
+            {
+              title: "Mock AP News Coverage",
+              url: "https://apnews.com/mock-coverage",
+              source: "apnews.com",
+              relevance: 0.8,
+            },
+          ],
+          isVerified: true,
+        },
+        requiresFactCheck: true,
+        creatorCredibilityRating: 7.2,
+        newsDetection: {
+          hasNewsContent: true,
+          confidence: 0.9,
+          newsKeywordsFound: ["breaking", "reports", "officials"],
+          potentialClaims: 3,
+          needsFactCheck: true,
+          contentType: "news_factual",
+        },
+      },
+    };
+
+    setMockResult(mockData);
+    setIsMockLoading(false);
+    toast.success("🎭 Mock Analysis Complete! (No API costs incurred)");
   };
 
   const handleSaveAnalysis = async () => {
@@ -232,7 +376,7 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
   return (
     <section className="py-24 md:py-32 relative">
       {/* Analysis Loading Overlay */}
-      {isLoading && (
+      {(isLoading || isMockLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <Card className="w-full max-w-md mx-auto shadow-2xl border-primary border-2 animate-in fade-in-0 zoom-in-95">
             <CardHeader>
@@ -281,13 +425,13 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
               className="flex-1 h-12 text-base min-w-0"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              disabled={isLoading}
+              disabled={isLoading || isMockLoading}
             />
             <Button
               type="submit"
               size="lg"
               className="px-6 h-12 shrink-0"
-              disabled={isLoading || !url.trim()}
+              disabled={isLoading || isMockLoading || !url.trim()}
             >
               {isLoading ? (
                 <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
@@ -297,437 +441,471 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
               {isLoading ? t.analyzing : t.analyzeButton}
             </Button>
           </form>
+
+          {/* Mock Analysis Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={handleMockAnalysis}
+              variant="outline"
+              size="lg"
+              className="px-6 h-12 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-dashed border-purple-300 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-600"
+              disabled={isLoading || isMockLoading || !url.trim()}
+            >
+              {isMockLoading ? (
+                <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <span className="mr-2">🧪</span>
+              )}
+              {isMockLoading ? "Running Mock..." : "Try Mock Demo (Free!)"}
+            </Button>
+          </div>
+
           <p className="text-sm text-muted-foreground text-center">
             Try it with any TikTok/Twitter(X) video URL to see the magic happen
           </p>
+
+          {/* Mock Demo Description */}
+          <div className="text-center">
+            <p className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 rounded-lg inline-block">
+              💡 The mock demo simulates the full analysis process with
+              realistic data—perfect for testing without API costs!
+            </p>
+          </div>
         </div>
 
         {/* Results */}
-        {result && (
+        {(result || mockResult) && (
           <div className="mx-auto max-w-4xl mt-8">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {result.success ? (
+                  {result?.success || mockResult?.success ? (
                     <CheckCircleIcon className="h-5 w-5 text-green-500" />
                   ) : (
                     <AlertCircleIcon className="h-5 w-5 text-red-500" />
                   )}
-                  {result.success ? t.analysisComplete : "Analysis Failed"}
+                  {result?.success || mockResult?.success
+                    ? mockResult
+                      ? "🧪 Mock Analysis Complete"
+                      : t.analysisComplete
+                    : "Analysis Failed"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {result.success && result.data ? (
-                  <div className="space-y-6 text-left">
-                    {/* Video Metadata */}
-                    <div className="border-b pb-4">
-                      <h3 className="font-semibold text-lg mb-2">
-                        {result.data.metadata.title}
-                      </h3>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>Creator: {result.data.metadata.creator}</p>
-                        <p>
-                          Platform: {result.data.metadata.platform || "Unknown"}
-                        </p>
-                        <p>Original URL: {result.data.metadata.originalUrl}</p>
-                        {result.data.metadata.description &&
-                          result.data.metadata.description !==
-                            result.data.metadata.title && (
-                            <p>
-                              Description: {result.data.metadata.description}
-                            </p>
-                          )}
-                      </div>
-                    </div>
+                {(result?.success && result.data) ||
+                (mockResult?.success && mockResult.data) ? (
+                  (() => {
+                    // Determine which data source to use
+                    const currentData =
+                      result?.success && result.data
+                        ? result.data
+                        : mockResult?.data;
+                    if (!currentData) return null;
 
-                    {/* Transcription */}
-                    {result.data.transcription &&
-                      result.data.transcription.text &&
-                      result.data.transcription.text.length > 0 && (
+                    return (
+                      <div className="space-y-6 text-left">
+                        {/* Video Metadata */}
+                        <div className="border-b pb-4">
+                          <h3 className="font-semibold text-lg mb-2">
+                            {currentData.metadata.title}
+                          </h3>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>Creator: {currentData.metadata.creator}</p>
+                            <p>
+                              Platform:{" "}
+                              {currentData.metadata.platform || "Unknown"}
+                            </p>
+                            <p>
+                              Original URL: {currentData.metadata.originalUrl}
+                            </p>
+                            {currentData.metadata.description &&
+                              currentData.metadata.description !==
+                                currentData.metadata.title && (
+                                <p>
+                                  Description:{" "}
+                                  {currentData.metadata.description}
+                                </p>
+                              )}
+                          </div>
+                        </div>
+
+                        {/* Transcription */}
+                        {currentData.transcription &&
+                          currentData.transcription.text &&
+                          currentData.transcription.text.length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="font-medium flex items-center gap-2">
+                                <ShieldCheckIcon className="h-4 w-4" />
+                                Transcription
+                              </h4>
+                              <div className="p-4 bg-muted rounded-lg">
+                                <div className="text-sm leading-relaxed">
+                                  <AnalysisRenderer
+                                    content={currentData.transcription.text}
+                                  />
+                                </div>
+                                {currentData.transcription.language && (
+                                  <p className="text-xs text-muted-foreground mt-3">
+                                    Language:{" "}
+                                    {currentData.transcription.language}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                        {/* Platform Analysis */}
                         <div className="space-y-3">
                           <h4 className="font-medium flex items-center gap-2">
-                            <ShieldCheckIcon className="h-4 w-4" />
-                            Transcription
+                            <AlertCircleIcon className="h-4 w-4" />
+                            Platform Analysis
                           </h4>
-                          <div className="p-4 bg-muted rounded-lg">
-                            <div className="text-sm leading-relaxed">
-                              <AnalysisRenderer
-                                content={result.data.transcription.text}
-                              />
+                          <div className="p-4 bg-muted rounded-lg space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Source Platform:</span>
+                              <Badge variant="secondary">
+                                {currentData.metadata.platform === "twitter"
+                                  ? "Twitter/X"
+                                  : "TikTok"}
+                              </Badge>
                             </div>
-                            {result.data.transcription.language && (
-                              <p className="text-xs text-muted-foreground mt-3">
-                                Language: {result.data.transcription.language}
-                              </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Content Type:</span>
+                              <Badge variant="outline">
+                                {currentData.metadata.platform === "twitter"
+                                  ? "Social Post"
+                                  : "Video Content"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">
+                                Fact-Check Required:
+                              </span>
+                              <Badge
+                                variant={
+                                  currentData.requiresFactCheck
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {currentData.requiresFactCheck ? "Yes" : "No"}
+                              </Badge>
+                            </div>
+                            {currentData.factCheck && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">
+                                  Verification Status:
+                                </span>
+                                <Badge
+                                  variant={
+                                    (
+                                      currentData.factCheck as unknown as FactCheckResult
+                                    ).isVerified
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                >
+                                  {(
+                                    currentData.factCheck as unknown as FactCheckResult
+                                  ).isVerified
+                                    ? "Verified"
+                                    : "Pending"}
+                                </Badge>
+                              </div>
                             )}
                           </div>
                         </div>
-                      )}
 
-                    {/* Platform Analysis */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium flex items-center gap-2">
-                        <AlertCircleIcon className="h-4 w-4" />
-                        Platform Analysis
-                      </h4>
-                      <div className="p-4 bg-muted rounded-lg space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Source Platform:</span>
-                          <Badge variant="secondary">
-                            {result.data.metadata.platform === "twitter"
-                              ? "Twitter/X"
-                              : "TikTok"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Content Type:</span>
-                          <Badge variant="outline">
-                            {result.data.metadata.platform === "twitter"
-                              ? "Social Post"
-                              : "Video Content"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Fact-Check Required:</span>
-                          <Badge
-                            variant={
-                              result.data.requiresFactCheck
-                                ? "destructive"
-                                : "secondary"
-                            }
-                          >
-                            {result.data.requiresFactCheck ? "Yes" : "No"}
-                          </Badge>
-                        </div>
-                        {result.data.factCheck && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">
-                              Verification Status:
-                            </span>
-                            <Badge
-                              variant={
-                                (
-                                  result.data
-                                    .factCheck as unknown as FactCheckResult
-                                ).isVerified
-                                  ? "default"
-                                  : "outline"
-                              }
-                            >
-                              {(
-                                result.data
-                                  .factCheck as unknown as FactCheckResult
-                              ).isVerified
-                                ? "Verified"
-                                : "Pending"}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* News Detection */}
-                    {result.data.newsDetection && (
-                      <div className="space-y-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <AlertCircleIcon className="h-4 w-4" />
-                          Content Analysis
-                        </h4>
-                        <div className="p-4 bg-muted rounded-lg space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Content Type:</span>
-                            <Badge
-                              variant={
-                                result.data.newsDetection.contentType ===
-                                "news_factual"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                            >
-                              {result.data.newsDetection.contentType ===
-                              "news_factual"
-                                ? "News/Factual"
-                                : "Entertainment"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">
-                              Requires Fact-Check:
-                            </span>
-                            <Badge
-                              variant={
-                                result.data.requiresFactCheck
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                            >
-                              {result.data.requiresFactCheck ? "Yes" : "No"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Confidence:</span>
-                            <span className="text-sm font-medium">
-                              {Math.round(
-                                result.data.newsDetection.confidence * 100
-                              )}
-                              %
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Fact-Check Results */}
-                    {result.data.factCheck && (
-                      <div className="space-y-4">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <ShieldCheckIcon className="h-4 w-4" />
-                          Fact-Check Results
-                        </h4>
-
-                        {/* Overall Verification Status */}
-                        <Card
-                          className={`border-l-4 ${
-                            (
-                              result.data
-                                .factCheck as unknown as FactCheckResult
-                            ).verdict === "true"
-                              ? "border-l-green-500"
-                              : (
-                                    result.data
-                                      .factCheck as unknown as FactCheckResult
-                                  ).verdict === "false"
-                                ? "border-l-red-500"
-                                : (
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).verdict === "misleading"
-                                  ? "border-l-yellow-500"
-                                  : "border-l-gray-500"
-                          }`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-sm mb-2">
-                                    Overall Verification Status
-                                  </h5>
-                                  <div className="text-sm text-muted-foreground">
-                                    {(
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).content && (
-                                      <AnalysisRenderer
-                                        content={
-                                          (
-                                            result.data
-                                              .factCheck as unknown as FactCheckResult
-                                          ).content
-                                        }
-                                      />
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {getStatusIcon(
-                                    (
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).verdict
-                                  )}
-                                  {getStatusBadge(
-                                    (
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).verdict
-                                  )}
-                                </div>
-                              </div>
-
-                              {(
-                                result.data
-                                  .factCheck as unknown as FactCheckResult
-                              ).explanation && (
-                                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-                                  <p className="font-medium mb-3 text-base">
-                                    Analysis:
-                                  </p>
-                                  <div>
-                                    {(() => {
-                                      const explanation = (
-                                        result.data
-                                          .factCheck as unknown as FactCheckResult
-                                      ).explanation;
-                                      const shouldTruncate =
-                                        explanation.length > 500;
-
-                                      const contentToShow =
-                                        shouldTruncate && !isAnalysisExpanded
-                                          ? explanation.substring(0, 500) +
-                                            "..."
-                                          : explanation;
-
-                                      return (
-                                        <AnalysisRenderer
-                                          content={contentToShow}
-                                        />
-                                      );
-                                    })()}
-                                  </div>
-                                  {(() => {
-                                    const explanation = (
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).explanation;
-
-                                    if (explanation.length <= 500) return null;
-
-                                    return (
-                                      <button
-                                        onClick={() =>
-                                          setIsAnalysisExpanded(
-                                            !isAnalysisExpanded
-                                          )
-                                        }
-                                        className="mt-4 text-primary hover:text-primary/80 font-medium transition-colors text-sm flex items-center gap-1"
-                                      >
-                                        {isAnalysisExpanded ? (
-                                          <>
-                                            <ChevronUpIcon className="h-4 w-4" />
-                                            Show less
-                                          </>
-                                        ) : (
-                                          <>
-                                            <ChevronDownIcon className="h-4 w-4" />
-                                            Show more
-                                          </>
-                                        )}
-                                      </button>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-
-                              {(
-                                result.data
-                                  .factCheck as unknown as FactCheckResult
-                              ).sources &&
-                                (
-                                  result.data
-                                    .factCheck as unknown as FactCheckResult
-                                ).sources.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-medium mb-2">
-                                      Sources (
-                                      {
-                                        (
-                                          result.data
-                                            .factCheck as unknown as FactCheckResult
-                                        ).sources.length
-                                      }{" "}
-                                      found):
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {(
-                                        result.data
-                                          .factCheck as unknown as FactCheckResult
-                                      ).sources
-                                        .slice(0, 5)
-                                        .map((source, sourceIndex) => (
-                                          <Button
-                                            key={sourceIndex}
-                                            size="sm"
-                                            variant="outline"
-                                            asChild
-                                          >
-                                            <a
-                                              href={source.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs"
-                                            >
-                                              {source.source}
-                                              <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                                            </a>
-                                          </Button>
-                                        ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span>
-                                  Confidence:{" "}
-                                  {
-                                    (
-                                      result.data
-                                        .factCheck as unknown as FactCheckResult
-                                    ).confidence
+                        {/* News Detection */}
+                        {currentData.newsDetection && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <AlertCircleIcon className="h-4 w-4" />
+                              Content Analysis
+                            </h4>
+                            <div className="p-4 bg-muted rounded-lg space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">Content Type:</span>
+                                <Badge
+                                  variant={
+                                    currentData.newsDetection.contentType ===
+                                    "news_factual"
+                                      ? "destructive"
+                                      : "secondary"
                                   }
+                                >
+                                  {currentData.newsDetection.contentType ===
+                                  "news_factual"
+                                    ? "News/Factual"
+                                    : "Entertainment"}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">
+                                  Requires Fact-Check:
+                                </span>
+                                <Badge
+                                  variant={
+                                    currentData.requiresFactCheck
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                >
+                                  {currentData.requiresFactCheck ? "Yes" : "No"}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">Confidence:</span>
+                                <span className="text-sm font-medium">
+                                  {Math.round(
+                                    currentData.newsDetection.confidence * 100
+                                  )}
                                   %
                                 </span>
-                                <span>
-                                  Verified:{" "}
-                                  {(
-                                    result.data
-                                      .factCheck as unknown as FactCheckResult
-                                  ).isVerified
-                                    ? "Yes"
-                                    : "No"}
-                                </span>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="pt-4 border-t">
-                      <div className="flex gap-3 flex-wrap">
-                        {/* Save Button - Only show for authenticated users */}
-                        {isAuthenticated && (
-                          <Button
-                            onClick={handleSaveAnalysis}
-                            disabled={isSaving || isSaved}
-                            className="flex items-center gap-2"
-                          >
-                            {isSaving ? (
-                              <LoaderIcon className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <BookmarkIcon className="h-4 w-4" />
-                            )}
-                            {isSaved
-                              ? t.saved
-                              : isSaving
-                                ? t.saving
-                                : t.saveAnalysis}
-                          </Button>
+                          </div>
                         )}
 
-                        <Button variant="outline" onClick={handleReset}>
-                          {t.reset}
-                        </Button>
-                      </div>
+                        {/* Fact-Check Results */}
+                        {currentData.factCheck && (
+                          <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2">
+                              <ShieldCheckIcon className="h-4 w-4" />
+                              Fact-Check Results
+                            </h4>
 
-                      {/* Login prompt for non-authenticated users */}
-                      {!isAuthenticated && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          <Link
-                            href="/sign-in"
-                            className="text-primary hover:underline"
-                          >
-                            Sign in
-                          </Link>{" "}
-                          to save your analysis results
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                            {/* Overall Verification Status */}
+                            <Card
+                              className={`border-l-4 ${
+                                (
+                                  currentData.factCheck as unknown as FactCheckResult
+                                ).verdict === "true"
+                                  ? "border-l-green-500"
+                                  : (
+                                        currentData.factCheck as unknown as FactCheckResult
+                                      ).verdict === "false"
+                                    ? "border-l-red-500"
+                                    : (
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).verdict === "misleading"
+                                      ? "border-l-yellow-500"
+                                      : "border-l-gray-500"
+                              }`}
+                            >
+                              <CardContent className="p-4">
+                                <div className="space-y-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1">
+                                      <h5 className="font-medium text-sm mb-2">
+                                        Overall Verification Status
+                                      </h5>
+                                      <div className="text-sm text-muted-foreground">
+                                        {(
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).content && (
+                                          <AnalysisRenderer
+                                            content={
+                                              (
+                                                currentData.factCheck as unknown as FactCheckResult
+                                              ).content
+                                            }
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {getStatusIcon(
+                                        (
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).verdict
+                                      )}
+                                      {getStatusBadge(
+                                        (
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).verdict
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {(
+                                    currentData.factCheck as unknown as FactCheckResult
+                                  ).explanation && (
+                                    <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                                      <p className="font-medium mb-3 text-base">
+                                        Analysis:
+                                      </p>
+                                      <div>
+                                        {(() => {
+                                          const explanation = (
+                                            currentData.factCheck as unknown as FactCheckResult
+                                          ).explanation;
+                                          const shouldTruncate =
+                                            explanation.length > 500;
+
+                                          const contentToShow =
+                                            shouldTruncate &&
+                                            !isAnalysisExpanded
+                                              ? explanation.substring(0, 500) +
+                                                "..."
+                                              : explanation;
+
+                                          return (
+                                            <AnalysisRenderer
+                                              content={contentToShow}
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                      {(() => {
+                                        const explanation = (
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).explanation;
+
+                                        if (explanation.length <= 500)
+                                          return null;
+
+                                        return (
+                                          <button
+                                            onClick={() =>
+                                              setIsAnalysisExpanded(
+                                                !isAnalysisExpanded
+                                              )
+                                            }
+                                            className="mt-4 text-primary hover:text-primary/80 font-medium transition-colors text-sm flex items-center gap-1"
+                                          >
+                                            {isAnalysisExpanded ? (
+                                              <>
+                                                <ChevronUpIcon className="h-4 w-4" />
+                                                Show less
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ChevronDownIcon className="h-4 w-4" />
+                                                Show more
+                                              </>
+                                            )}
+                                          </button>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
+
+                                  {(
+                                    currentData.factCheck as unknown as FactCheckResult
+                                  ).sources &&
+                                    (
+                                      currentData.factCheck as unknown as FactCheckResult
+                                    ).sources.length > 0 && (
+                                      <div>
+                                        <p className="text-xs font-medium mb-2">
+                                          Sources (
+                                          {
+                                            (
+                                              currentData.factCheck as unknown as FactCheckResult
+                                            ).sources.length
+                                          }{" "}
+                                          found):
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {(
+                                            currentData.factCheck as unknown as FactCheckResult
+                                          ).sources
+                                            .slice(0, 5)
+                                            .map((source, sourceIndex) => (
+                                              <Button
+                                                key={sourceIndex}
+                                                size="sm"
+                                                variant="outline"
+                                                asChild
+                                              >
+                                                <a
+                                                  href={source.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-xs"
+                                                >
+                                                  {source.source}
+                                                  <ExternalLinkIcon className="h-3 w-3 ml-1" />
+                                                </a>
+                                              </Button>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>
+                                      Confidence:{" "}
+                                      {
+                                        (
+                                          currentData.factCheck as unknown as FactCheckResult
+                                        ).confidence
+                                      }
+                                      %
+                                    </span>
+                                    <span>
+                                      Verified:{" "}
+                                      {(
+                                        currentData.factCheck as unknown as FactCheckResult
+                                      ).isVerified
+                                        ? "Yes"
+                                        : "No"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="pt-4 border-t">
+                          <div className="flex gap-3 flex-wrap">
+                            {/* Save Button - Only show for authenticated users */}
+                            {isAuthenticated && (
+                              <Button
+                                onClick={handleSaveAnalysis}
+                                disabled={isSaving || isSaved}
+                                className="flex items-center gap-2"
+                              >
+                                {isSaving ? (
+                                  <LoaderIcon className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <BookmarkIcon className="h-4 w-4" />
+                                )}
+                                {isSaved
+                                  ? t.saved
+                                  : isSaving
+                                    ? t.saving
+                                    : t.saveAnalysis}
+                              </Button>
+                            )}
+
+                            <Button variant="outline" onClick={handleReset}>
+                              {t.reset}
+                            </Button>
+                          </div>
+
+                          {/* Login prompt for non-authenticated users */}
+                          {!isAuthenticated && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              <Link
+                                href="/sign-in"
+                                className="text-primary hover:underline"
+                              >
+                                Sign in
+                              </Link>{" "}
+                              to save your analysis results
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="text-left">
-                    <p className="text-red-500 mb-4">{result.error}</p>
+                    <p className="text-red-500 mb-4">{result?.error}</p>
                     <Button variant="outline" onClick={handleReset}>
                       {t.tryAgain}
                     </Button>
