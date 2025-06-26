@@ -8,6 +8,7 @@
 export { CreatorSourcesCard } from "./creator-sources-card";
 export { TopCredibleSources } from "./top-credible-sources";
 export { TopMisinformationSources } from "./top-misinformation-sources";
+export { NewsPageContent } from "./news-page-content";
 
 export type {} from // Re-export types from creator-sources-card if needed externally
 "./creator-sources-card";
