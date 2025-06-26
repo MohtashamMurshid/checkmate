@@ -1,25 +1,148 @@
+# Dependencies
 node_modules
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-.DS_Store
-Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
 coverage
 *.test.*
 *.spec.*
+__tests__
+test
+tests
+jest.config.*
+vitest.config.*
+playwright.config.*
+cypress.config.*
+.nyc_output
+
+# Build outputs
 .next
 out
 dist
+build
+.turbo
+.swc
+
+# Deployment platforms
 .vercel
 .netlify
+.firebase
+
+# Environment files
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.example
+
+# IDE and Editor files
+.vscode
+.idea
 *.swp
 *.swo
-checkmate-browser-extension
+*~
+.DS_Store
+Thumbs.db
+*.sublime-*
+.atom
+.brackets
+
+# Git and VCS
+.git
+.gitignore
+.gitattributes
+.gitmodules
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+azure-pipelines.yml
+.buildkite
+.semaphore
+
+# Documentation
+docs
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+TODO.md
+*.md
+
+# Mobile app (Flutter)
 checkmate_wrapper_flutter
+
+# Browser extension
+checkmate-browser-extension
+
+# Development tools and configs
+tools
+scripts
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+.editorconfig
+.nvmrc
+.node-version
+tsconfig.json
+jsconfig.json
+babel.config.*
+webpack.config.*
+rollup.config.*
+vite.config.*
+
+# Cache directories
+.cache
+.parcel-cache
+.npm
+.yarn
+.pnpm-store
+node_modules/.cache
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Temporary files
+tmp
+temp
+.tmp
+.temp
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*~
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp.*
+
+# Monorepo
+lerna.json
+.lerna
+.rush
+
+# Storybook
+.storybook
+storybook-static
+
+# Security
+.secrets
+.env.vault
 
 
 
