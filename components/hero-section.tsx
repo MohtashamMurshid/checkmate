@@ -514,14 +514,19 @@ export function HeroSection({ initialUrl = "" }: HeroSectionProps) {
                                     Overall Verification Status
                                   </h5>
                                   <div className="text-sm text-muted-foreground">
-                                    <AnalysisRenderer
-                                      content={
-                                        (
-                                          result.data
-                                            .factCheck as unknown as FactCheckResult
-                                        ).content
-                                      }
-                                    />
+                                    {(
+                                      result.data
+                                        .factCheck as unknown as FactCheckResult
+                                    ).content && (
+                                      <AnalysisRenderer
+                                        content={
+                                          (
+                                            result.data
+                                              .factCheck as unknown as FactCheckResult
+                                          ).content
+                                        }
+                                      />
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">

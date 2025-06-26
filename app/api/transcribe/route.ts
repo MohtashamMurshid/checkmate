@@ -1,447 +1,280 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  transcribeVideoDirectly,
-  scrapeWebContent,
-} from "../../../tools/index";
-import { Downloader } from "@tobyg74/tiktok-api-dl";
-import { Scraper } from "@the-convocation/twitter-scraper";
-import { researchAndFactCheck } from "../../../tools/fact-checking";
-import { calculateCreatorCredibilityRating } from "../../../tools/content-analysis";
+  validateTranscribeRequest,
+  detectPlatform,
+  sanitizeUrl,
+} from "../../../lib/validation";
+import { ApiError } from "../../../lib/api-error";
+import { logger } from "../../../lib/logger";
+import { checkOperationRateLimit } from "../../../lib/rate-limiter";
+import { TikTokHandler } from "./handlers/tiktok-handler";
+import { TwitterHandler } from "./handlers/twitter-handler";
+import { WebHandler } from "./handlers/web-handler";
+import { ProcessingContext } from "./handlers/base-handler";
 
-// Define interfaces for proper typing
-export interface FactCheckData {
-  overallStatus: string;
-  confidence: number;
-  isVerified: boolean;
-  isMisleading: boolean;
-  isUnverifiable: boolean;
-  reasoning: string;
-  sources: Array<{
-    title: string;
-    url: string;
-    source?: string;
-    relevance?: number;
-  }>;
-  error?: string;
-  webSearchAnalysis?: {
-    summary: string;
-  };
-}
+/**
+ * Content Analysis API Endpoint
+ *
+ * This endpoint analyzes social media and web content for fact-checking and credibility assessment.
+ *
+ * **Supported Platforms:**
+ * - TikTok videos: Extracts video metadata, transcribes audio, fact-checks content
+ * - Twitter/X posts: Extracts tweet data, transcribes video if present, fact-checks text
+ * - Web articles: Scrapes content, fact-checks articles and blog posts
+ *
+ * **Features:**
+ * - ✅ Multi-platform content analysis
+ * - ✅ AI-powered transcription for video content
+ * - ✅ Automated fact-checking with source verification
+ * - ✅ Creator credibility scoring (0-10 scale)
+ * - ✅ Rate limiting and error handling
+ * - ✅ Comprehensive logging and monitoring
+ *
+ * **Request Format:**
+ * ```json
+ * {
+ *   "tiktokUrl": "https://tiktok.com/@user/video/123...",  // OR
+ *   "twitterUrl": "https://twitter.com/user/status/123...", // OR
+ *   "webUrl": "https://example.com/article",               // OR
+ *   "videoUrl": "https://any-video-url.mp4"
+ * }
+ * ```
+ *
+ * **Response Format:**
+ * ```json
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "transcription": { "text": "...", "segments": [...], "language": "en" },
+ *     "metadata": { "title": "...", "creator": "...", "platform": "..." },
+ *     "factCheck": { "verdict": "verified", "confidence": 85, "explanation": "..." },
+ *     "requiresFactCheck": true,
+ *     "creatorCredibilityRating": 7.5
+ *   }
+ * }
+ * ```
+ *
+ * @param request - HTTP request with URL to analyze
+ * @returns Analysis results with fact-check and credibility data
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
-interface AnalysisResult {
-  status: string;
-  result?: {
-    type: string;
-    text?: string;
-    desc?: string;
-    author?: {
-      nickname: string;
-      unique_id?: string;
-    };
-    video?: string | null;
-    videoHD?: string | null;
-    videoWatermark?: string | null;
-    videos?: { url: string }[];
-  };
-}
+  logger.info("Content analysis request started", {
+    requestId,
+    operation: "transcribe",
+    metadata: {
+      method: request.method,
+      userAgent: request.headers.get("user-agent")?.slice(0, 100),
+    },
+  });
 
-// Initialize Twitter scraper instance
-const twitterScraper = new Scraper();
-
-export async function POST(request: NextRequest) {
   try {
-    const { videoUrl, tiktokUrl, twitterUrl, webUrl } = await request.json();
+    // Step 1: Validate request body
+    const body = await request.json();
+    const validatedRequest = validateTranscribeRequest(body);
 
-    // Validate input - accept any URL parameter
-    if (!videoUrl && !tiktokUrl && !twitterUrl && !webUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "A URL is required (videoUrl, tiktokUrl, twitterUrl, or webUrl)",
+    logger.debug("Request validated successfully", {
+      requestId,
+      operation: "validate-request",
+      metadata: {
+        hasVideoUrl: !!validatedRequest.videoUrl,
+        hasTiktokUrl: !!validatedRequest.tiktokUrl,
+        hasTwitterUrl: !!validatedRequest.twitterUrl,
+        hasWebUrl: !!validatedRequest.webUrl,
+      },
+    });
+
+    // Step 2: Extract and sanitize the URL
+    const rawUrl =
+      validatedRequest.webUrl ||
+      validatedRequest.twitterUrl ||
+      validatedRequest.tiktokUrl ||
+      validatedRequest.videoUrl!;
+
+    const sanitizedUrl = sanitizeUrl(rawUrl);
+    const platform = detectPlatform(sanitizedUrl);
+
+    logger.info("Platform detected and URL sanitized", {
+      requestId,
+      operation: "platform-detection",
+      platform,
+      metadata: { sanitizedUrl },
+    });
+
+    // Step 3: Check rate limits for this operation
+    const rateLimitResult = checkOperationRateLimit(request, "transcribe");
+    if (!rateLimitResult.allowed) {
+      logger.warn("Rate limit exceeded", {
+        requestId,
+        operation: "rate-limit-check",
+        platform,
+        metadata: {
+          remaining: rateLimitResult.remaining,
+          resetTime: rateLimitResult.resetTime,
         },
-        { status: 400 }
+      });
+
+      return NextResponse.json(
+        ApiError.rateLimited(rateLimitResult.retryAfter).toJSON(),
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": new Date(
+              rateLimitResult.resetTime
+            ).toISOString(),
+            "Retry-After": rateLimitResult.retryAfter?.toString() || "60",
+          },
+        }
       );
     }
 
-    // Determine the platform and URL to use
-    const actualUrl = webUrl || twitterUrl || tiktokUrl || videoUrl;
-
-    // Detect platform based on URL patterns
-    const tiktokUrlPattern =
-      /^https?:\/\/(www\.)?(tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)/;
-    const twitterUrlPattern =
-      /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\/\d+/;
-
-    let platform: string;
-    if (tiktokUrlPattern.test(actualUrl)) {
-      platform = "tiktok";
-    } else if (twitterUrlPattern.test(actualUrl)) {
-      platform = "twitter";
-    } else {
-      platform = "web";
-    }
-
-    // Validate URL format based on platform (only for specific platforms)
-    if (platform === "twitter") {
-      if (!twitterUrlPattern.test(actualUrl)) {
-        return NextResponse.json(
-          { success: false, error: "Invalid Twitter URL format" },
-          { status: 400 }
-        );
-      }
-    } else if (platform === "tiktok") {
-      if (!tiktokUrlPattern.test(actualUrl)) {
-        return NextResponse.json(
-          { success: false, error: "Invalid TikTok URL format" },
-          { status: 400 }
-        );
-      }
-    } else if (platform === "web") {
-      // Basic URL validation for web content
-      try {
-        new URL(actualUrl);
-      } catch {
-        return NextResponse.json(
-          { success: false, error: "Invalid URL format" },
-          { status: 400 }
-        );
-      }
-    }
-
-    let result: AnalysisResult;
-    let extractedVideoUrl = "";
-    let transcription: {
-      text: string;
-      segments: unknown[];
-      language: string | undefined;
-    } | null = null;
-    let contentText = "";
-
-    if (platform === "twitter") {
-      // Handle Twitter/X post
-      try {
-        // Extract tweet ID from URL
-        const tweetIdMatch = actualUrl.match(/status\/(\d+)/);
-        if (!tweetIdMatch) {
-          return NextResponse.json(
-            { success: false, error: "Could not extract tweet ID from URL" },
-            { status: 400 }
-          );
-        }
-
-        const tweetId = tweetIdMatch[1];
-        const tweet = await twitterScraper.getTweet(tweetId);
-
-        if (!tweet) {
-          return NextResponse.json(
-            { success: false, error: "Failed to fetch Twitter post" },
-            { status: 500 }
-          );
-        }
-
-        result = {
-          status: "success",
-          result: {
-            type: "tweet",
-            text: tweet.text || "",
-            desc: tweet.text || "",
-            author: {
-              nickname: tweet.username || "Unknown",
-              unique_id: tweet.username || "unknown",
-            },
-            video: null,
-            videoHD: null,
-            videoWatermark: null,
-            // Check if tweet has video content
-            ...(tweet.videos &&
-              tweet.videos.length > 0 && {
-                video: tweet.videos[0].url,
-                videoHD: tweet.videos[0].url,
-                videoWatermark: tweet.videos[0].url,
-              }),
-          },
-        };
-
-        contentText = tweet.text || "";
-
-        // If there's a video in the tweet, try to transcribe it
-        if (tweet.videos && tweet.videos.length > 0) {
-          extractedVideoUrl = tweet.videos[0].url || "";
-        }
-      } catch (error) {
-        console.error("Twitter scraping error:", error);
-        return NextResponse.json(
-          { success: false, error: "Failed to analyze Twitter post" },
-          { status: 500 }
-        );
-      }
-    } else if (platform === "web") {
-      // Handle general web content using Firecrawl
-      try {
-        const scrapeResult = await scrapeWebContent(actualUrl);
-
-        if (!scrapeResult.success || !scrapeResult.data) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: scrapeResult.error || "Failed to scrape web content",
-            },
-            { status: 500 }
-          );
-        }
-
-        result = {
-          status: "success",
-          result: {
-            type: "web_content",
-            text: scrapeResult.data.content,
-            desc: scrapeResult.data.description || scrapeResult.data.title,
-            author: {
-              nickname: scrapeResult.data.author || "Unknown",
-              unique_id: scrapeResult.data.author || "unknown",
-            },
-            video: null,
-            videoHD: null,
-            videoWatermark: null,
-          },
-        };
-
-        contentText =
-          scrapeResult.data.content || scrapeResult.data.description || "";
-      } catch (error) {
-        console.error("Web scraping error:", error);
-        return NextResponse.json(
-          { success: false, error: "Failed to analyze web content" },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Handle TikTok video (existing logic)
-      result = await Downloader(actualUrl, {
-        version: "v3",
-      });
-
-      if (result.status !== "success" || !result.result) {
-        return NextResponse.json(
-          { success: false, error: "Failed to analyze TikTok video" },
-          { status: 500 }
-        );
-      }
-
-      extractedVideoUrl =
-        result.result.videoHD || result.result.videoWatermark || "";
-      contentText = result.result.desc || "";
-    }
-
-    // Try to transcribe video if available
-    if (
-      extractedVideoUrl &&
-      (result.result?.type === "video" || platform === "twitter")
-    ) {
-      try {
-        const transcriptionResult =
-          await transcribeVideoDirectly(extractedVideoUrl);
-        if (transcriptionResult.success && transcriptionResult.data) {
-          transcription = transcriptionResult.data;
-        }
-      } catch {
-        // Continue without transcription if it fails
-      }
-    }
-
-    // Perform fact-checking if we have content (transcription or text)
-    let factCheckResults = null;
-    let creatorCredibilityRating = null;
-    const textToFactCheck = transcription?.text || contentText;
-
-    if (textToFactCheck && textToFactCheck.trim().length > 0) {
-      if (result.result) {
-        try {
-          // Removed console.log for starting fact-checking process
-
-          // Prepare comprehensive context with content metadata
-          const creator =
-            result.result.author?.nickname ||
-            result.result.author?.unique_id ||
-            "Unknown";
-          const description = result.result.text || result.result.desc || "";
-
-          let platformName: string;
-          let contentType: string;
-          if (platform === "twitter") {
-            platformName = "Twitter/X";
-            contentType = "Post";
-          } else if (platform === "tiktok") {
-            platformName = "TikTok";
-            contentType = "Video";
-          } else {
-            platformName = "Web Article/Blog";
-            contentType = "Content";
-          }
-
-          const contextPrompt = `${platformName} Content Analysis Context:
-- ${platform === "web" ? "Source" : "Creator"}: ${creator}
-- ${contentType} Content: "${description}"
-- ${contentType} URL: ${actualUrl}
-- Platform: ${platformName}
-
-${transcription ? `Transcribed Content: "${transcription.text}"` : ""}
-
-Please fact-check the claims from this ${platformName.toLowerCase()} ${contentType.toLowerCase()} content, paying special attention to ${
-            platform === "web"
-              ? "the article content and any factual claims made"
-              : `both the ${contentType.toLowerCase()} text${transcription ? " and the transcribed speech" : ""}`
-          }. Consider the context that this is ${
-            platform === "web"
-              ? "web content that may contain opinions, analysis, or claims that need verification"
-              : "social media content that may contain opinions, personal experiences, or claims that need verification"
-          }.`;
-
-          const factCheck = await researchAndFactCheck.execute(
-            {
-              transcription: textToFactCheck,
-              title: description,
-              context: contextPrompt,
-            },
-            {
-              toolCallId: "simple-verification",
-              messages: [],
-            }
-          );
-
-          // Removed console.log for fact-check result
-
-          if (factCheck.success && factCheck.data) {
-            // Extract the simple verification result
-            const resultData = factCheck.data as FactCheckData;
-            const contentSummary =
-              resultData.webSearchAnalysis?.summary ||
-              textToFactCheck.slice(0, 200);
-
-            factCheckResults = {
-              verdict: resultData.overallStatus || "unverifiable", // TRUE/FALSE/UNVERIFIABLE
-              confidence: Math.round((resultData.confidence || 0.5) * 100), // Convert to percentage
-              explanation: resultData.reasoning || "No analysis available",
-              sources: resultData.sources || [],
-              content: contentSummary,
-              isVerified: true,
-            };
-
-            // Removed console.log for verification result
-
-            // Calculate creator credibility rating
-            try {
-              // Removed console.log for calculating creator credibility rating
-
-              const credibilityResult =
-                await calculateCreatorCredibilityRating.execute(
-                  {
-                    factCheckResult: {
-                      verdict: factCheckResults.verdict,
-                      confidence: factCheckResults.confidence,
-                      isVerified: factCheckResults.isVerified,
-                    },
-                    contentMetadata: {
-                      creator: creator,
-                      platform: platform,
-                      title: description,
-                      hasTranscription: !!transcription?.text,
-                      contentType: result.result.type || "unknown",
-                    },
-                    analysisMetrics: {
-                      hasNewsContent: true, // Assuming news content since we're fact-checking
-                      needsFactCheck: true,
-                      contentLength: textToFactCheck.length,
-                    },
-                  },
-                  {
-                    toolCallId: "credibility-rating",
-                    messages: [],
-                  }
-                );
-
-              if (credibilityResult.success && credibilityResult.data) {
-                creatorCredibilityRating =
-                  credibilityResult.data.credibilityRating;
-                // Removed console.log for creator credibility rating
-              }
-            } catch (error) {
-              console.warn(
-                "⚠️ Failed to calculate creator credibility rating:",
-                error
-              );
-            }
-          } else {
-            console.warn("❌ Verification failed:", factCheck);
-            const contentSummary = textToFactCheck.slice(0, 200);
-
-            // Create a fallback result
-            factCheckResults = {
-              verdict: "unverifiable",
-              confidence: 0,
-              explanation:
-                "Verification service temporarily unavailable. Manual fact-checking recommended.",
-              sources: [],
-              content: contentSummary,
-              isVerified: false,
-              error: "Service unavailable",
-            };
-
-            // Removed console.log for using fallback verification
-          }
-        } catch (error) {
-          console.error("💥 Fact-checking process failed:", error);
-          // Continue without fact-checking if it fails
-        }
-      } else {
-        // Removed console.log for no result data available for fact-checking context
-      }
-    } else {
-      // Removed console.log for no content available for fact-checking
-    }
-
-    // Format the response to match the expected interface
-    const responseData = {
-      transcription: transcription || {
-        text: "",
-        segments: [],
-        language: undefined,
-      },
-      metadata: {
-        title:
-          platform === "twitter"
-            ? result.result?.text || "Twitter Post"
-            : result.result?.desc || "TikTok Video",
-        description:
-          platform === "twitter"
-            ? result.result?.text || ""
-            : result.result?.desc || "",
-        creator:
-          platform === "twitter"
-            ? result.result?.author?.unique_id || "Unknown"
-            : result.result?.author?.nickname || "Unknown",
-        originalUrl: actualUrl,
-        platform: platform,
-      },
-      factCheck: factCheckResults,
-      requiresFactCheck: !!factCheckResults,
-      creatorCredibilityRating: creatorCredibilityRating,
+    // Step 4: Create processing context
+    const context: ProcessingContext = {
+      requestId,
+      userId: request.headers.get("x-user-id") || undefined,
+      platform,
+      url: sanitizedUrl,
+      startTime,
     };
 
-    return NextResponse.json({
-      success: true,
-      data: responseData,
+    // Step 5: Select appropriate handler based on platform
+    let handler;
+    switch (platform) {
+      case "tiktok":
+        handler = new TikTokHandler();
+        break;
+      case "twitter":
+        handler = new TwitterHandler();
+        break;
+      case "web":
+        handler = new WebHandler();
+        break;
+      default:
+        throw ApiError.unsupportedPlatform(sanitizedUrl);
+    }
+
+    logger.info("Handler selected, starting content processing", {
+      requestId,
+      operation: "handler-selection",
+      platform,
+      metadata: { handlerType: handler.constructor.name },
     });
-  } catch (error) {
-    console.error("Social media analysis error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
+
+    // Step 6: Process the content using the selected handler
+    const result = await handler.process(sanitizedUrl, context);
+
+    // Step 7: Log success and return results
+    const duration = Date.now() - startTime;
+    logger.info("Content analysis completed successfully", {
+      requestId,
+      operation: "transcribe",
+      platform,
+      duration,
+      metadata: {
+        hasTranscription: !!result.transcription.text,
+        hasFactCheck: !!result.factCheck,
+        hasCredibilityRating: result.creatorCredibilityRating !== null,
+        factCheckVerdict: result.factCheck?.verdict,
+        credibilityRating: result.creatorCredibilityRating,
       },
-      { status: 500 }
+    });
+
+    return NextResponse.json(
+      { success: true, data: result },
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Request-ID": requestId,
+          "X-Processing-Time": duration.toString(),
+          "X-Platform": platform,
+        },
+      }
     );
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Handle known API errors
+    if (error instanceof ApiError) {
+      logger.warn("API error occurred", {
+        requestId,
+        operation: "transcribe",
+        duration,
+        metadata: {
+          errorCode: error.code,
+          statusCode: error.statusCode,
+          errorMessage: error.message,
+        },
+      });
+
+      return NextResponse.json(error.toJSON(), {
+        status: error.statusCode,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Request-ID": requestId,
+          "X-Error-Code": error.code,
+        },
+      });
+    }
+
+    // Handle unexpected errors
+    logger.error("Unexpected error in content analysis", {
+      requestId,
+      operation: "transcribe",
+      duration,
+      metadata: {
+        errorName: error instanceof Error ? error.name : "Unknown",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      },
+    });
+
+    const internalError = ApiError.internalError(error as Error);
+    return NextResponse.json(internalError.toJSON(), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Request-ID": requestId,
+        "X-Error-Code": internalError.code,
+      },
+    });
   }
+}
+
+/**
+ * Health check endpoint
+ * Returns the API status and basic configuration
+ */
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json({
+    status: "healthy",
+    service: "content-analysis-api",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+    supportedPlatforms: ["tiktok", "twitter", "web"],
+    features: [
+      "video-transcription",
+      "fact-checking",
+      "credibility-analysis",
+      "rate-limiting",
+      "structured-logging",
+    ],
+  });
+}
+
+/**
+ * OPTIONS handler for CORS preflight requests
+ */
+export async function OPTIONS(): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-ID",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 }

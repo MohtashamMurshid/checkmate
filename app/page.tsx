@@ -1,7 +1,5 @@
-import { HeroSection } from "@/components/hero-section";
-import { HowItWorks } from "@/components/how-it-works";
-import { CTASection } from "@/components/cta-section";
-import { Footer } from "@/components/footer";
+import { PageLayout } from "@/components/ui/page-layout";
+import { HomePageContent } from "@/components/home-page-content";
 
 interface HomeProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -12,14 +10,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const linkParam = typeof params.link === "string" ? params.link : "";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <div className="mx-auto max-w-5xl px-4 md:px-6">
-        <HeroSection initialUrl={linkParam} />
-        <HowItWorks />
-        <CTASection />
-      </div>
-
-      <Footer />
-    </div>
+    <PageLayout variant="gradient">
+      <HomePageContent initialUrl={linkParam} />
+    </PageLayout>
   );
 }

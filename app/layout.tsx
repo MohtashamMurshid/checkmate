@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { LanguageProvider } from "@/components/language-provider";
-import { ClerkProvider } from "@clerk/nextjs";
-import ConvexClientProvider from "@/components/convex-client-provider";
+
 import UserSync from "@/components/user-sync";
 import { Toaster } from "sonner";
 import { Header } from "@/components/header";
+import Providers from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,24 +33,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClerkProvider>
-          <ConvexClientProvider>
-            <LanguageProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-              >
-                <UserSync />
-                <Header />
-
-                {children}
-                <Toaster richColors />
-              </ThemeProvider>
-            </LanguageProvider>
-          </ConvexClientProvider>
-        </ClerkProvider>
+        <Providers>
+          {/* User sync is used to sync the user to the database */}
+          <UserSync />
+          <Header />
+          {children}
+          <Toaster richColors />
+        </Providers>
       </body>
     </html>
   );
