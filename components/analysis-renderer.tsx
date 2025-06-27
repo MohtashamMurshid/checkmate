@@ -21,6 +21,11 @@ import React from "react";
  * - - **Sub-headers:** with content
  */
 export function AnalysisRenderer({ content }: { content: string }) {
+  // Guard against null, undefined, or empty content
+  if (!content || typeof content !== "string" || content.trim() === "") {
+    return null;
+  }
+
   const renderContent = (text: string) => {
     const lines = text.split("\n");
     const elements = [];

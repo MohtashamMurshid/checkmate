@@ -166,3 +166,72 @@ export const getAllUsers = query({
       );
   },
 });
+
+// Public query to get creator comments
+export const getCreatorComments = query({
+  args: {
+    creatorId: v.string(),
+    platform: v.string(),
+  },
+  async handler(ctx, { creatorId, platform }) {
+    const comments = await ctx.db
+      .query("creatorComments")
+      .withIndex("by_creator_platform", (q) =>
+        q.eq("creatorId", creatorId).eq("platform", platform)
+      )
+      .order("desc")
+      .collect();
+
+    // Get user information for each comment
+    const commentsWithUserInfo = await Promise.all(
+      comments.map(async (comment) => {
+        const user = await ctx.db.get(comment.userId);
+        return {
+          _id: comment._id,
+          comment: comment.content,
+          userName: user?.firstName || user?.username || "Anonymous",
+          createdAt: comment.createdAt,
+        };
+      })
+    );
+
+    return commentsWithUserInfo;
+  },
+});
+
+// Public mutation to add creator comment
+export const addCreatorComment = mutation({
+  args: {
+    creatorId: v.string(),
+    platform: v.string(),
+    comment: v.string(),
+    userId: v.string(), // Clerk user ID
+    userName: v.string(),
+  },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the user from the database
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.userId))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("creatorComments", {
+      creatorId: args.creatorId,
+      platform: args.platform,
+      userId: user._id,
+      content: args.comment,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
