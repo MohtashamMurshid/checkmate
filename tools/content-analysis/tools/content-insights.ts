@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { extractThemes } from "../helpers/themes.js";
+import { extractThemes } from "../helpers/themes";
 
 /**
  * Enhanced tool for generating comprehensive content insights and actionable recommendations.

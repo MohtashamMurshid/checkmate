@@ -1,14 +1,14 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { extractThemes } from "../helpers/themes.js";
+import { extractThemes } from "../helpers/themes";
 import {
   extractKeyPoints,
   generateTakeaways,
   calculateEstimatedReadingTime,
   analyzeContentDepth,
   determineCreatorStyle,
-} from "../helpers/content-utils.js";
-import { analyzeEngagementElements } from "../helpers/engagement.js";
+} from "../helpers/content-utils";
+import { analyzeEngagementElements } from "../helpers/engagement";
 
 /**
  * Enhanced tool for generating intelligent video summaries with key insights.

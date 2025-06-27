@@ -5,17 +5,17 @@ import {
   extractEmotions,
   determineOverallSentiment,
   calculateSentimentConfidence,
-} from "../helpers/sentiment.js";
+} from "../helpers/sentiment";
 import {
   extractThemes,
   categorizeContent,
   extractKeywords,
-} from "../helpers/themes.js";
+} from "../helpers/themes";
 import {
   assessEngagementPotential,
   calculateReadabilityScore,
-} from "../helpers/engagement.js";
-import { generateIntelligentSummary } from "../helpers/content-utils.js";
+} from "../helpers/engagement";
+import { generateIntelligentSummary } from "../helpers/content-utils";
 
 /**
  * Enhanced tool for analyzing the sentiment and themes of social media content.

@@ -11,17 +11,17 @@
  */
 
 // Import all tools
-import { analyzeContentSentiment } from "./tools/sentiment-analysis.js";
-import { extractHashtagsAndMentions } from "./tools/social-extraction.js";
-import { generateContentInsights } from "./tools/content-insights.js";
-import { generateVideoSummary } from "./tools/video-summary.js";
-import { calculateCreatorCredibilityRating } from "./tools/credibility-rating.js";
+import { analyzeContentSentiment } from "./tools/sentiment-analysis";
+import { extractHashtagsAndMentions } from "./tools/social-extraction";
+import { generateContentInsights } from "./tools/content-insights";
+import { generateVideoSummary } from "./tools/video-summary";
+import { calculateCreatorCredibilityRating } from "./tools/credibility-rating";
 
 // Import helper functions for direct use
-export * from "./helpers/sentiment.js";
-export * from "./helpers/themes.js";
-export * from "./helpers/engagement.js";
-export * from "./helpers/content-utils.js";
+export * from "./helpers/sentiment";
+export * from "./helpers/themes";
+export * from "./helpers/engagement";
+export * from "./helpers/content-utils";
 
 // Export individual tools
 export {
