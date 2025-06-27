@@ -49,6 +49,20 @@ export const detectNewsContent = tool({
       "who reports",
       "fda approves",
       "leaked documents",
+      "new study",
+      "new research",
+      "new data",
+      "new statistics",
+      "new poll",
+      "new survey",
+      "new report",
+      "new analysis",
+      "new findings",
+      "new evidence",
+      "new study",
+      "new research",
+      "new data",
+      "new statistics",
     ];
 
     const factualClaimPatterns = [

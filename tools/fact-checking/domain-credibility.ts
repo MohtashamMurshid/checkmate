@@ -1,13 +1,40 @@
-import OpenAI from "openai";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 /**
- * Evaluate domain credibility using LLM on a scale of 1-10
+ * Evaluates domain credibility using AI analysis on a scale of 1-10.
+ *
+ * This function assesses the trustworthiness and reliability of a domain
+ * for factual information and news content. It considers factors like:
+ * - Editorial standards and fact-checking processes
+ * - Reputation in journalism and academia
+ * - Transparency about sources and methodology
+ * - Track record of accuracy and bias
+ *
+ * Includes intelligent fallbacks for government/educational domains
+ * when API is unavailable.
+ *
+ * @param domain - The domain name to evaluate (e.g., "reuters.com")
+ * @returns Promise resolving to credibility score (1-10 scale)
+ *
+ * @example
+ * ```typescript
+ * const score = await evaluateDomainCredibility("reuters.com");
+ * console.log(score); // 10 (extremely credible)
+ *
+ * const score2 = await evaluateDomainCredibility("cnn.com");
+ * console.log(score2); // 8 (very credible)
+ * ```
  */
 export async function evaluateDomainCredibility(
   domain: string
 ): Promise<number> {
   if (!process.env.OPENAI_API_KEY) {
-    // Default score for government and well-known educational domains
+    /**
+     * Fallback Credibility Assessment
+     * When API is unavailable, uses domain-based heuristics to assign scores.
+     * Prioritizes government and educational domains as highly credible.
+     */
     if (
       domain.includes(".gov") ||
       domain.includes(".edu") ||
@@ -22,10 +49,11 @@ export async function evaluateDomainCredibility(
   }
 
   try {
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
+    /**
+     * AI-Powered Domain Credibility Analysis
+     * Uses GPT to evaluate domain reputation and reliability based on
+     * established journalism standards and credibility factors.
+     */
     const prompt = `Evaluate the credibility of the domain "${domain}" for news and factual information on a scale of 1-10, where:
     
     10 = Extremely credible (e.g., Reuters, AP News, government agencies, peer-reviewed journals)
@@ -48,19 +76,26 @@ export async function evaluateDomainCredibility(
     
     Respond with ONLY a single number from 1-10.`;
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 10,
+    const { text: scoreText } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt: prompt,
+      maxTokens: 10,
       temperature: 0.1,
     });
 
-    const scoreText = response.choices[0]?.message?.content?.trim();
-    const score = scoreText ? parseInt(scoreText) : 6;
+    /**
+     * Parse and Validate Credibility Score
+     * Extracts numeric score from AI response and ensures it's within valid range.
+     */
+    const score = scoreText.trim() ? parseInt(scoreText.trim()) : 6;
 
     // Validate score is between 1-10
     return Math.max(1, Math.min(10, isNaN(score) ? 6 : score));
   } catch (error) {
+    /**
+     * Error Handling and Fallback
+     * Logs errors for debugging while providing safe default score.
+     */
     console.warn(`Failed to evaluate domain credibility for ${domain}:`, error);
     // Return default moderate score on error
     return 6;

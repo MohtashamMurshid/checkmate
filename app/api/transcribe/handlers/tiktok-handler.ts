@@ -14,40 +14,124 @@ import { logger } from "../../../../lib/logger";
 
 /**
  * TikTok-specific data extracted from the platform
+ *
+ * Extends the base ExtractedContent interface with TikTok-specific metadata
+ * including video download URLs in different qualities and content type information.
+ *
+ * @interface TikTokExtractedData
+ * @extends ExtractedContent
+ * @since 1.0.0
  */
 interface TikTokExtractedData extends ExtractedContent {
+  /** Standard definition video download URL */
   videoUrl?: string;
+  /** High definition video download URL (preferred for transcription) */
   videoHD?: string;
+  /** Video URL with TikTok watermark */
   videoWatermark?: string;
+  /** Content type (e.g., 'video', 'image', 'live') */
   type: string;
 }
 
 /**
- * TikTok content handler
+ * TikTok content handler implementation
  *
- * Handles the complete processing pipeline for TikTok videos:
- * 1. Extract video metadata and download URLs
- * 2. Transcribe video audio to text
- * 3. Fact-check the transcribed content
- * 4. Calculate creator credibility rating
+ * Specialized handler for processing TikTok videos through a comprehensive analysis pipeline.
+ * This handler orchestrates the complete workflow from video extraction to credibility assessment.
+ *
+ * ## Processing Pipeline
+ * 1. **Content Extraction**: Downloads video metadata and obtains video URLs
+ * 2. **Audio Transcription**: Converts video audio to text using speech-to-text services
+ * 3. **Fact Verification**: Analyzes claims in transcribed content and video descriptions
+ * 4. **Credibility Assessment**: Calculates creator trustworthiness based on content analysis
+ *
+ * ## Supported Content Types
+ * - Standard TikTok videos with audio
+ * - Videos with text overlays and descriptions
+ * - Multi-language content (automatic language detection)
+ *
+ * ## Error Handling
+ * The handler implements graceful degradation:
+ * - If transcription fails, continues with description analysis
+ * - If fact-checking fails, returns fallback results
+ * - If credibility calculation fails, returns null rating
+ *
+ * @class TikTokHandler
+ * @extends BaseHandler
+ * @since 1.0.0
  *
  * @example
  * ```typescript
  * const handler = new TikTokHandler();
- * const result = await handler.process(tiktokUrl, context);
+ * const context = {
+ *   requestId: 'req-123',
+ *   url: 'https://www.tiktok.com/@user/video/1234567890',
+ *   timeout: 30000
+ * };
+ *
+ * try {
+ *   const result = await handler.process(tiktokUrl, context);
+ *   console.log('Analysis complete:', result);
+ * } catch (error) {
+ *   console.error('Processing failed:', error);
+ * }
  * ```
  */
 export class TikTokHandler extends BaseHandler {
+  /**
+   * Creates a new TikTok handler instance
+   *
+   * Initializes the handler with platform-specific configuration for TikTok content processing.
+   *
+   * @constructor
+   * @since 1.0.0
+   */
   constructor() {
     super("tiktok");
   }
 
   /**
-   * Extract TikTok video metadata and download URLs
-   * @param url - TikTok video URL
-   * @param context - Processing context
-   * @returns Extracted TikTok data
-   * @throws ApiError if extraction fails
+   * Extracts TikTok video metadata and download URLs
+   *
+   * Uses the TikTok API downloader to fetch comprehensive video metadata including
+   * multiple quality video URLs, creator information, and content descriptions.
+   * This method prioritizes HD video URLs for better transcription quality.
+   *
+   * @protected
+   * @async
+   * @method extractContent
+   * @param {string} url - The TikTok video URL to process (must be a valid TikTok video link)
+   * @param {ProcessingContext} context - Processing context containing request ID and configuration
+   * @param {string} context.requestId - Unique identifier for tracking this request
+   * @param {number} [context.timeout] - Optional timeout in milliseconds
+   *
+   * @returns {Promise<ExtractedContent | null>} Promise resolving to extracted TikTok data or null if extraction fails
+   * @returns {TikTokExtractedData} Returns TikTok-specific data including:
+   *   - Video URLs in multiple qualities (SD, HD, watermarked)
+   *   - Creator nickname and metadata
+   *   - Video description and title
+   *   - Content type classification
+   *
+   * @throws {ApiError} Throws TikTok-specific API error if:
+   *   - URL is invalid or inaccessible
+   *   - TikTok API returns error status
+   *   - Network request fails
+   *   - Video is private or deleted
+   *
+   * @since 1.0.0
+   *
+   * @example
+   * ```typescript
+   * const extracted = await handler.extractContent(
+   *   'https://www.tiktok.com/@user/video/1234567890',
+   *   { requestId: 'req-123' }
+   * );
+   *
+   * if (extracted) {
+   *   console.log('Creator:', extracted.creator);
+   *   console.log('Video URL:', extracted.videoHD || extracted.videoUrl);
+   * }
+   * ```
    */
   protected async extractContent(
     url: string,
@@ -104,10 +188,49 @@ export class TikTokHandler extends BaseHandler {
   }
 
   /**
-   * Transcribe TikTok video audio to text
-   * @param extractedData - Data extracted from TikTok
-   * @param context - Processing context
-   * @returns Transcription result or null if no video or transcription fails
+   * Transcribes TikTok video audio to text using speech-to-text services
+   *
+   * Attempts to extract and transcribe audio from TikTok videos, prioritizing
+   * higher quality video sources for better transcription accuracy. Supports
+   * automatic language detection and returns timestamped segments.
+   *
+   * The method implements a quality fallback strategy:
+   * 1. First tries HD video URL
+   * 2. Falls back to watermarked video
+   * 3. Finally uses standard definition video
+   *
+   * @protected
+   * @async
+   * @method transcribeContent
+   * @param {ExtractedContent | null} extractedData - Previously extracted TikTok data
+   * @param {ProcessingContext} context - Processing context for logging and tracking
+   * @param {string} context.requestId - Unique request identifier
+   *
+   * @returns {Promise<TranscriptionResult | null>} Promise resolving to transcription data or null
+   * @returns {TranscriptionResult} Returns transcription containing:
+   *   - Full transcribed text
+   *   - Timestamped segments with start/end times
+   *   - Detected language code
+   * @returns {null} Returns null if:
+   *   - No extracted data available
+   *   - No video URL found
+   *   - Content type is not video
+   *   - Transcription service fails
+   *
+   * @since 1.0.0
+   *
+   * @example
+   * ```typescript
+   * const transcription = await handler.transcribeContent(extractedData, context);
+   *
+   * if (transcription) {
+   *   console.log('Transcribed text:', transcription.text);
+   *   console.log('Language:', transcription.language);
+   *   console.log('Segments:', transcription.segments.length);
+   * }
+   * ```
+   *
+   * @see {@link transcribeVideoDirectly} for the underlying transcription service
    */
   protected async transcribeContent(
     extractedData: ExtractedContent | null,
@@ -202,11 +325,57 @@ export class TikTokHandler extends BaseHandler {
   }
 
   /**
-   * Fact-check the video content using transcription and description
-   * @param transcription - Transcribed text from video
-   * @param extractedData - Original TikTok data
-   * @param context - Processing context
-   * @returns Fact-check result or null if no content to check
+   * Performs comprehensive fact-checking on TikTok video content
+   *
+   * Analyzes claims and statements in both transcribed audio and video descriptions
+   * using advanced fact-checking algorithms. The method prioritizes transcribed
+   * content over descriptions for accuracy, but falls back gracefully when
+   * transcription is unavailable.
+   *
+   * ## Analysis Process
+   * 1. **Content Prioritization**: Uses transcribed text if available, otherwise video description
+   * 2. **Context Assembly**: Builds comprehensive analysis prompt with creator and platform context
+   * 3. **Claim Verification**: Researches factual claims against reliable sources
+   * 4. **Confidence Scoring**: Assigns confidence levels based on source reliability
+   * 5. **Source Attribution**: Provides verifiable sources for fact-check results
+   *
+   * @protected
+   * @async
+   * @method performFactCheck
+   * @param {TranscriptionResult | null} transcription - Transcribed audio content from the video
+   * @param {ExtractedContent | null} extractedData - Original TikTok metadata and descriptions
+   * @param {ProcessingContext} context - Processing context with request tracking
+   * @param {string} context.requestId - Unique identifier for this analysis request
+   * @param {string} context.url - Original TikTok URL being analyzed
+   *
+   * @returns {Promise<FactCheckResult | null>} Promise resolving to fact-check analysis or null
+   * @returns {FactCheckResult} Returns comprehensive fact-check containing:
+   *   - Overall verdict (verified, false, misleading, unverified)
+   *   - Confidence percentage (0-100)
+   *   - Detailed explanation of findings
+   *   - Analyzed content snippet
+   *   - Credible sources with reliability scores
+   *   - Warning flags for potential issues
+   * @returns {null} Returns null if no content is available for analysis
+   *
+   * @since 1.0.0
+   *
+   * @example
+   * ```typescript
+   * const factCheck = await handler.performFactCheck(
+   *   transcription,
+   *   extractedData,
+   *   context
+   * );
+   *
+   * if (factCheck) {
+   *   console.log('Verdict:', factCheck.verdict);
+   *   console.log('Confidence:', factCheck.confidence + '%');
+   *   console.log('Sources:', factCheck.sources.length);
+   * }
+   * ```
+   *
+   * @see {@link researchAndFactCheck} for the underlying fact-checking service
    */
   protected async performFactCheck(
     transcription: TranscriptionResult | null,
@@ -350,11 +519,70 @@ Please fact-check the claims from this TikTok video content, paying special atte
   }
 
   /**
-   * Calculate creator credibility rating based on fact-check results
-   * @param factCheck - Fact-check results
-   * @param extractedData - Original TikTok data
-   * @param context - Processing context
-   * @returns Credibility rating (0-10) or null if calculation fails
+   * Calculates creator credibility rating based on comprehensive content analysis
+   *
+   * Evaluates the trustworthiness and reliability of the TikTok creator based on
+   * fact-check results, content quality metrics, and platform-specific factors.
+   * The rating system considers historical accuracy, source reliability, and
+   * content verification patterns.
+   *
+   * ## Rating Factors
+   * - **Fact-check Results**: Accuracy and confidence of current content verification
+   * - **Content Quality**: Presence of transcription, description detail, content type
+   * - **Platform Context**: TikTok-specific credibility indicators
+   * - **Creator Metadata**: Username, verification status, content patterns
+   *
+   * ## Rating Scale
+   * - **9-10**: Highly credible, verified information from reliable sources
+   * - **7-8**: Generally credible with minor concerns or unverified claims
+   * - **5-6**: Mixed credibility, some verified and some questionable content
+   * - **3-4**: Low credibility, significant misinformation or unverified claims
+   * - **1-2**: Very low credibility, primarily false or misleading content
+   * - **0**: No credible information, completely unreliable
+   *
+   * @protected
+   * @async
+   * @method calculateCredibility
+   * @param {FactCheckResult | null} factCheck - Results from content fact-checking analysis
+   * @param {ExtractedContent | null} extractedData - Original TikTok content metadata
+   * @param {ProcessingContext} context - Processing context for logging and tracking
+   * @param {string} context.requestId - Unique identifier for this credibility calculation
+   *
+   * @returns {Promise<number | null>} Promise resolving to credibility rating or null
+   * @returns {number} Credibility rating from 0-10 where:
+   *   - Higher scores indicate more credible creators
+   *   - Scores are based on content verification and quality metrics
+   *   - Ratings are rounded to nearest integer for consistency
+   * @returns {null} Returns null if:
+   *   - No fact-check data available
+   *   - No extracted content metadata
+   *   - Credibility calculation service fails
+   *   - Insufficient data for meaningful assessment
+   *
+   * @since 1.0.0
+   *
+   * @example
+   * ```typescript
+   * const credibility = await handler.calculateCredibility(
+   *   factCheckResult,
+   *   extractedData,
+   *   context
+   * );
+   *
+   * if (credibility !== null) {
+   *   console.log(`Creator credibility: ${credibility}/10`);
+   *
+   *   if (credibility >= 7) {
+   *     console.log('High credibility creator');
+   *   } else if (credibility >= 5) {
+   *     console.log('Moderate credibility creator');
+   *   } else {
+   *     console.log('Low credibility creator');
+   *   }
+   * }
+   * ```
+   *
+   * @see {@link calculateCreatorCredibilityRating} for the underlying rating algorithm
    */
   protected async calculateCredibility(
     factCheck: FactCheckResult | null,

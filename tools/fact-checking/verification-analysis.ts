@@ -1,14 +1,41 @@
-import OpenAI from "openai";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 /**
- * Analyze verification status and confidence using LLM
+ * Analyzes verification status and confidence using LLM with comprehensive fact-check analysis.
+ *
+ * This function takes a claim and supporting research content, then uses AI to determine:
+ * - Verification status (verified/misleading/unverifiable)
+ * - Confidence level (0.0 to 1.0)
+ *
+ * The function includes intelligent fallbacks for when API keys are unavailable,
+ * using keyword-based analysis as a backup method.
+ *
+ * @param claim - The original claim or content to be verified
+ * @param searchContent - Research content and evidence from credible sources
+ * @returns Promise resolving to verification status and confidence score
+ *
+ * @example
+ * ```typescript
+ * const result = await analyzeVerificationStatus(
+ *   "Vaccines cause autism in children",
+ *   "CDC research shows no link between vaccines and autism..."
+ * );
+ *
+ * console.log(result.status); // "misleading"
+ * console.log(result.confidence); // 0.85
+ * ```
  */
 export async function analyzeVerificationStatus(
   claim: string,
   searchContent: string
 ): Promise<{ status: string; confidence: number }> {
   if (!process.env.OPENAI_API_KEY) {
-    // Fallback to basic keyword analysis if no API key
+    /**
+     * Fallback Analysis: Keyword-Based Assessment
+     * When API is unavailable, uses basic keyword matching to determine status.
+     * This provides a basic level of analysis even without AI capabilities.
+     */
     const lowercaseContent = searchContent.toLowerCase();
     let status = "unverifiable";
     let confidence = 0.5;
@@ -32,13 +59,15 @@ export async function analyzeVerificationStatus(
   }
 
   try {
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
+    /**
+     * AI-Powered Verification Analysis
+     * Uses GPT to analyze research content and determine verification status
+     * with high accuracy and nuanced understanding of context.
+     */
     const prompt = `Analyze the following fact-check research results for the claim: "${claim}"
 
 Research Results:
+${searchContent}
 
 Based on the research evidence, determine:
 1. Verification Status: Choose ONE of: "verified", "misleading", "unverifiable"
@@ -52,26 +81,35 @@ Guidelines:
 Respond in this exact JSON format:
 {"status": "status_here", "confidence": 0.0}`;
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 100,
+    const { text: responseText } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt: prompt,
+      maxTokens: 100,
       temperature: 0.1,
     });
 
-    const responseText = response.choices[0]?.message?.content?.trim();
-
     try {
-      const parsed = JSON.parse(responseText || "{}");
+      /**
+       * Parse AI Response and Extract Verification Data
+       * Attempts to parse JSON response and validates the results.
+       */
+      const parsed = JSON.parse(responseText.trim() || "{}");
       const status = parsed.status || "unverifiable";
       const confidence = Math.max(0, Math.min(1, parsed.confidence || 0.5));
 
       return { status, confidence };
     } catch {
-      // Fallback if JSON parsing fails
+      /**
+       * JSON Parsing Fallback
+       * If AI response isn't valid JSON, return safe defaults.
+       */
       return { status: "unverifiable", confidence: 0.5 };
     }
   } catch (error) {
+    /**
+     * Error Handling and Logging
+     * Logs errors for debugging while providing safe fallback response.
+     */
     console.warn(`Failed to analyze verification status for claim:`, error);
     return { status: "unverifiable", confidence: 0.5 };
   }
